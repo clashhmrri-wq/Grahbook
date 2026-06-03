@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "GrahakBook",
+    "slug": "grahakbook-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "GrahakBook near-by shops aur customers ko connect karne ke liye aapki location use karta hai (GrahakBook uses your location to connect you with nearby customers)."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "scheme": "grahakbook"
+  }
+}

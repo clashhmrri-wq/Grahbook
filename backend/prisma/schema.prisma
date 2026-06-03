@@ -1,0 +1,143 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum SaaSPlan {
+  BASIC      // ₹299/month
+  PREMIUM    // ₹799/month
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIAL
+}
+
+enum OrderStatus {
+  RECEIVED    // Order placed by customer
+  ACCEPTED    // Accepted by Kirana store
+  PREPARING   // Packing products
+  READY       // Ready for self-pickup or delivery
+  COMPLETED   // Delivered and settled
+  CANCELLED   // Cancelled by store/customer
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model Shopkeeper {
+  id                   String             @id @default(uuid())
+  ownerName            String             // Kirana owner name
+  shopName             String             // Store Name
+  phoneNumber          String             @unique // WhatsApp/Mobile number for login
+  pinCode              String             // 6-digit postal code
+  address              String             // Full physical address
+  city                 String             // Target City (e.g., Delhi, Bangalore, Indore)
+  latitude             Float              // Geographical Coordinates for 2-3km radius searches
+  longitude            Float
+  isOndcEnabled        Boolean            @default(false)
+  saasPlan             SaaSPlan           @default(BASIC)
+  saasStatus           SubscriptionStatus @default(TRIAL)
+  saasExpiresAt        DateTime
+  razorpayCustomerId   String?            // Razorpay Customer ID for subscription recurring billing
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  products             Product[]
+  orders               Order[]
+  reviews              Review[]
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  fullName    String
+  phoneNumber String   @unique // Auth via OTP
+  latitude    Float?   // Last known location
+  longitude   Float?
+  address     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orders      Order[]
+  reviews     Review[]
+}
+
+model Product {
+  id           String      @id @default(uuid())
+  shopkeeperId String
+  name         String      // Product name (e.g., "Aashirvaad Atta 5kg")
+  description  String?
+  price        Decimal     @db.Decimal(10, 2)
+  stockQuantity Int        @default(0) // Available quantity
+  imageUrl     String?     // Product image url
+  category     String      // e.g. Grocery, Dairy, Snacks
+  isAvailable  Boolean     @default(true)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  shopkeeper   Shopkeeper  @relation(fields: [shopkeeperId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+}
+
+model Order {
+  id           String      @id @default(uuid())
+  shopkeeperId String
+  customerId   String
+  totalAmount  Decimal     @db.Decimal(10, 2)
+  status       OrderStatus @default(RECEIVED)
+  deliveryType String      // "SELF_PICKUP" or "HOME_DELIVERY"
+  otpCode      String?     // Verification OTP for secure handoff
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  shopkeeper   Shopkeeper  @relation(fields: [shopkeeperId], references: [id])
+  customer     Customer    @relation(fields: [customerId], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+}
+
+model OrderItem {
+  id        String   @id @default(uuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2) // Captured price at the time of order
+
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id               String        @id @default(uuid())
+  orderId          String
+  razorpayOrderId  String        @unique // Razorpay Order ID reference
+  razorpayPaymentId String?       // Razorpay Payment ID reference
+  amount           Decimal       @db.Decimal(10, 2)
+  status           PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  order            Order         @relation(fields: [orderId], references: [id])
+}
+
+model Review {
+  id           String     @id @default(uuid())
+  shopkeeperId String
+  customerId   String
+  rating       Int        // 1 to 5 stars
+  comment      String?    // Neighbor feedback
+  createdAt    DateTime   @default(now())
+
+  shopkeeper   Shopkeeper @relation(fields: [shopkeeperId], references: [id], onDelete: Cascade)
+  customer     Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
