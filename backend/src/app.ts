@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import shopkeeperRoutes from './routes/shopkeeperRoutes';
+import productRoutes from './routes/productRoutes';
+import shopRoutes from './routes/shopRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +28,8 @@ app.get('/health', (req: Request, res: Response) => {
 
 // Mount Routes
 app.use('/api/shopkeepers', shopkeeperRoutes);
+app.use('/api/products', productRoutes);
+app.use('/api/shops', shopRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

@@ -33,6 +33,13 @@ export default function ShopkeeperDashboard() {
       </View>
 
       <TouchableOpacity 
+        style={styles.catalogBtn}
+        onPress={() => router.push('/shopkeeper/catalog')}
+      >
+        <Text style={styles.catalogBtnText}>📚 Manage Catalog (सामान लिस्ट देखें)</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
         style={styles.backBtn}
         onPress={() => router.replace('/')}
       >
@@ -109,6 +116,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textMuted,
     marginTop: 4,
+  },
+  catalogBtn: {
+    backgroundColor: COLORS.primary,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  catalogBtnText: {
+    color: COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 15,
   },
   backBtn: {
     borderColor: COLORS.error,

@@ -5,4 +5,7 @@ export const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2:
 export const API_ROUTES = {
   shopkeeperOnboard: `${API_BASE_URL}/api/shopkeepers/onboard`,
   healthCheck: `${API_BASE_URL}/health`,
+  products: `${API_BASE_URL}/api/products`,
+  nearbyShops: `${API_BASE_URL}/api/shops/nearby`,
+  shopDetails: (id: string) => `${API_BASE_URL}/api/shops/${id}`,
 };
