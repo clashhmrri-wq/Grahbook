@@ -19,7 +19,11 @@ export const getNearbyShops = async (req: Request, res: Response): Promise<void>
   try {
     const { lat, lng, radius } = req.query as any;
 
-    if (isNaN(lat) || isNaN(lng)) {
+    const parsedLat = parseFloat(lat as string);
+    const parsedLng = parseFloat(lng as string);
+    const parsedRadius = parseFloat((radius as string) || '3.0');
+
+    if (isNaN(parsedLat) || isNaN(parsedLng)) {
       res.status(400).json({
         success: false,
         message: 'Valid lat (latitude) and lng (longitude) query parameters are required.',
@@ -46,8 +50,8 @@ export const getNearbyShops = async (req: Request, res: Response): Promise<void>
           6371 * acos(
             LEAST(
               GREATEST(
-                cos(radians(${lat})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${lng})) + 
-                sin(radians(${lat})) * sin(radians(latitude)), 
+                cos(radians(${parsedLat})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${parsedLng})) + 
+                sin(radians(${parsedLat})) * sin(radians(latitude)), 
                 -1.0
               ), 
               1.0
@@ -59,14 +63,14 @@ export const getNearbyShops = async (req: Request, res: Response): Promise<void>
         6371 * acos(
           LEAST(
             GREATEST(
-              cos(radians(${lat})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${lng})) + 
-              sin(radians(${lat})) * sin(radians(latitude)), 
+              cos(radians(${parsedLat})) * cos(radians(latitude)) * cos(radians(longitude) - radians(${parsedLng})) + 
+              sin(radians(${parsedLat})) * sin(radians(latitude)), 
               -1.0
             ), 
             1.0
           )
         )
-      ) <= ${radius}
+      ) <= ${parsedRadius}
       ORDER BY distance ASC;
     `;
 
