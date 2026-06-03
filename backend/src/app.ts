@@ -4,6 +4,10 @@ import dotenv from 'dotenv';
 import shopkeeperRoutes from './routes/shopkeeperRoutes';
 import productRoutes from './routes/productRoutes';
 import shopRoutes from './routes/shopRoutes';
+import orderRoutes from './routes/orderRoutes';
+import paymentRoutes from './routes/paymentRoutes';
+import reviewRoutes from './routes/reviewRoutes';
+import customerRoutes from './routes/customerRoutes';
 
 // Load environment variables
 dotenv.config();
@@ -30,6 +34,10 @@ app.get('/health', (req: Request, res: Response) => {
 app.use('/api/shopkeepers', shopkeeperRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/shops', shopRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/payments', paymentRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/customers', customerRoutes);
 
 // Global Error Handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {

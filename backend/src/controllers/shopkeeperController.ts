@@ -96,3 +96,136 @@ export const onboardShopkeeper = async (req: Request, res: Response): Promise<vo
     });
   }
 };
+
+/**
+ * Fetch analytics data for a specific shopkeeper
+ */
+export const getShopkeeperAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    // Check if shopkeeper exists
+    const shop = await prisma.shopkeeper.findUnique({ where: { id } });
+    if (!shop) {
+      res.status(404).json({
+        success: false,
+        message: 'Shopkeeper profile not found.',
+      });
+      return;
+    }
+
+    // Get today's start date
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    // Fetch Completed Orders aggregates
+    const ordersAgg = await prisma.order.aggregate({
+      where: {
+        shopkeeperId: id,
+        status: 'COMPLETED',
+      },
+      _sum: {
+        totalAmount: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Fetch Today's Orders aggregates
+    const todayOrdersAgg = await prisma.order.aggregate({
+      where: {
+        shopkeeperId: id,
+        status: 'COMPLETED',
+        createdAt: {
+          gte: startOfToday,
+        },
+      },
+      _sum: {
+        totalAmount: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    // Fetch total active orders (all orders that are NOT completed and NOT cancelled)
+    const activeOrdersCount = await prisma.order.count({
+      where: {
+        shopkeeperId: id,
+        status: {
+          in: ['RECEIVED', 'ACCEPTED', 'PREPARING', 'READY'],
+        },
+      },
+    });
+
+    // Fetch Reviews average rating
+    const ratingAgg = await prisma.review.aggregate({
+      where: {
+        shopkeeperId: id,
+      },
+      _avg: {
+        rating: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const totalEarnings = ordersAgg._sum.totalAmount ? Number(ordersAgg._sum.totalAmount) : 0;
+    const completedOrdersCount = ordersAgg._count.id || 0;
+    const todayEarnings = todayOrdersAgg._sum.totalAmount ? Number(todayOrdersAgg._sum.totalAmount) : 0;
+    const todayOrdersCount = todayOrdersAgg._count.id || 0;
+    const averageRating = ratingAgg._avg.rating ? Number(ratingAgg._avg.rating.toFixed(1)) : 0;
+    const totalReviews = ratingAgg._count.id || 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalEarnings,
+        completedOrdersCount,
+        todayEarnings,
+        todayOrdersCount,
+        activeOrdersCount,
+        averageRating,
+        totalReviews,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching shopkeeper analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch dashboard analytics.',
+    });
+  }
+};
+
+/**
+ * Get all shopkeepers list (for dev selector)
+ */
+export const getAllShopkeepers = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const shopkeepers = await prisma.shopkeeper.findMany({
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        shopName: true,
+        ownerName: true,
+        phoneNumber: true,
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: shopkeepers,
+    });
+  } catch (error) {
+    console.error('Error fetching all shopkeepers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve shopkeepers list.',
+    });
+  }
+};
+
+

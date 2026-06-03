@@ -141,7 +141,10 @@ export default function ShopkeeperOnboard() {
 
         <TouchableOpacity
           style={styles.dashboardBtn}
-          onPress={() => router.push('/shopkeeper/dashboard')}
+          onPress={() => router.push({
+            pathname: '/shopkeeper/dashboard',
+            params: { shopkeeperId: successData.data.id }
+          })}
         >
           <Text style={styles.dashboardBtnText}>Go to Dashboard</Text>
         </TouchableOpacity>
