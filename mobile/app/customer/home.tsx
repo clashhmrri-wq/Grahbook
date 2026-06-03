@@ -7,11 +7,22 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  TextInput,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as Location from 'expo-location';
 import { COLORS } from '../../src/constants/localization';
 import { API_ROUTES } from '../../src/config/api';
+
+const GROCERY_CATEGORIES = [
+  { id: '1', name: 'Dairy & Milk', emoji: '🥛', color: '#EBF5FF' },
+  { id: '2', name: 'Bread & Bakery', emoji: '🍞', color: '#FFFBEB' },
+  { id: '3', name: 'Snacks & Munchies', emoji: '🍪', color: '#FDF2F8' },
+  { id: '4', name: 'Soft Drinks', emoji: '🥤', color: '#ECFDF5' },
+  { id: '5', name: 'Fruits & Vegetables', emoji: '🥬', color: '#F5F5F4' },
+  { id: '6', name: 'Atta & Rice', emoji: '🌾', color: '#FFF7ED' },
+];
 
 export default function CustomerHome() {
   const router = useRouter();
@@ -24,6 +35,7 @@ export default function CustomerHome() {
   // Shop states
   const [shops, setShops] = useState<any[]>([]);
   const [shopsLoading, setShopsLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch coordinates and search nearby stores
   const getNearbyShops = async (lat: number, lng: number) => {
@@ -40,7 +52,7 @@ export default function CustomerHome() {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Connection Error', 'Could not connect to the backend server. Please verify settings.');
+      Alert.alert('Connection Error', 'Could not connect to the backend server. Verify your internet.');
     } finally {
       setShopsLoading(false);
     }
@@ -53,7 +65,7 @@ export default function CustomerHome() {
       if (status !== 'granted') {
         Alert.alert(
           'Location Needed',
-          'Please enable location permissions to find nearby stores.'
+          'Please enable location permissions to find grocery stores nearby.'
         );
         setLocationLoading(false);
         return;
@@ -84,248 +96,422 @@ export default function CustomerHome() {
     locateAndSearch();
   }, []);
 
+  // Filter shops by search query
+  const filteredShops = shops.filter((shop) =>
+    shop.shopName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shop.city.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🛍️ Neighborhood Shops</Text>
-        <Text style={styles.subtitle}>Discover local Kirana stores within 2-3 kms.</Text>
-      </View>
-
-      {/* GPS Status Card */}
-      <View style={styles.locationCard}>
-        {latitude && longitude ? (
-          <View style={styles.locationSuccess}>
-            <Text style={styles.locText}>📍 Location Captured</Text>
-            <Text style={styles.coordsText}>Lat: {latitude.toFixed(5)}, Lng: {longitude.toFixed(5)}</Text>
-            <TouchableOpacity style={styles.refreshBtn} onPress={locateAndSearch} disabled={locationLoading}>
-              <Text style={styles.refreshBtnText}>🔄 Refresh Location</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.locationPrompt}>
-            <Text style={styles.locErrorText}>Location could not be captured.</Text>
-            <TouchableOpacity style={styles.gpsBtn} onPress={locateAndSearch} disabled={locationLoading}>
-              {locationLoading ? (
-                <ActivityIndicator color={COLORS.background} />
-              ) : (
-                <Text style={styles.gpsBtnText}>📍 Locate Me</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-
-      {/* Stores List */}
-      <View style={styles.storesSection}>
-        <Text style={styles.sectionHeading}>Nearby Kirana Stores</Text>
-
-        {shopsLoading ? (
-          <ActivityIndicator color={COLORS.primary} size="large" style={{ marginTop: 40 }} />
-        ) : shops.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              No GrahakBook Kirana stores found within 3 km of your location.
-            </Text>
-            <Text style={styles.emptySubText}>
-              (Tip: Make sure you have registered a shopkeeper with close-by coordinates).
+    <View style={styles.wrapper}>
+      {/* Brand Header Banner (Blinkit Yellow) */}
+      <View style={styles.brandHeader}>
+        <View style={styles.locationHeaderRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.brandTagline}>🚴 Delivering from Nearby Kirana</Text>
+            <Text style={styles.locationSummary} numberOfLines={1}>
+              {latitude && longitude 
+                ? `📍 Pinpointed Location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`
+                : '📍 Fetching location...'
+              }
             </Text>
           </View>
-        ) : (
-          shops.map((shop) => (
-            <TouchableOpacity
-              key={shop.id}
-              style={styles.shopCard}
-              onPress={() => router.push(`/customer/shop/${shop.id}`)}
-            >
-              <View style={styles.shopEmojiContainer}>
-                <Text style={styles.shopEmoji}>🏪</Text>
-              </View>
-              <View style={styles.shopDetails}>
-                <Text style={styles.shopName}>{shop.shopName}</Text>
-                <Text style={styles.shopOwner}>Owner: {shop.ownerName}</Text>
-                <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
-                <Text style={styles.distanceBadge}>{shop.distance.toFixed(2)} km away</Text>
-              </View>
-              <Text style={styles.arrowIcon}>➔</Text>
-            </TouchableOpacity>
-          ))
-        )}
+          <TouchableOpacity style={styles.gpsBadge} onPress={locateAndSearch} disabled={locationLoading}>
+            {locationLoading ? (
+              <ActivityIndicator color={COLORS.text} size="small" />
+            ) : (
+              <Text style={styles.gpsBadgeText}>🔄 Refresh GPS</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Blinkit Style Search Input */}
+        <View style={styles.searchContainer}>
+          <Text style={styles.searchIcon}>🔍</Text>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search stores or cities..."
+            placeholderTextColor="#9CA3AF"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
-      <TouchableOpacity 
-        style={styles.backBtn}
-        onPress={() => router.replace('/')}
-      >
-        <Text style={styles.backBtnText}>Go Back</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Category Circle Grid */}
+        <View style={styles.categoriesSection}>
+          <Text style={styles.sectionHeading}>Shop By Category</Text>
+          <View style={styles.categoryGrid}>
+            {GROCERY_CATEGORIES.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                style={styles.categoryCard}
+                onPress={() => {
+                  // Direct category filters could be applied, or go straight to home
+                  Alert.alert('Category Select', `Filter results by ${cat.name}`);
+                }}
+              >
+                <View style={[styles.categoryCircle, { backgroundColor: cat.color }]}>
+                  <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+                </View>
+                <Text style={styles.categoryName} numberOfLines={2}>{cat.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Promo banner */}
+        <View style={styles.promoBanner}>
+          <Text style={styles.promoTitle}>⚡ Free Direct-to-Home Delivery</Text>
+          <Text style={styles.promoSub}>Zero order markups. Directly pay local merchants via UPI.</Text>
+        </View>
+
+        {/* Nearby Stores Listings */}
+        <View style={styles.storesSection}>
+          <Text style={styles.sectionHeading}>Kirana Stores Near You</Text>
+
+          {shopsLoading ? (
+            <ActivityIndicator color={COLORS.primary} size="large" style={{ marginTop: 40 }} />
+          ) : filteredShops.length === 0 ? (
+            <View style={styles.emptyCard}>
+              <Text style={styles.emptyText}>
+                No stores found nearby.
+              </Text>
+              <Text style={styles.emptySubText}>
+                (Tip: Onboard a local store nearby or refresh GPS coordinates).
+              </Text>
+              <TouchableOpacity style={styles.retryBtn} onPress={locateAndSearch}>
+                <Text style={styles.retryBtnText}>Retry Location Scan</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            filteredShops.map((shop) => (
+              <TouchableOpacity
+                key={shop.id}
+                style={styles.shopCard}
+                onPress={() => router.push(`/customer/shop/${shop.id}`)}
+              >
+                {/* Store Header Detail */}
+                <View style={styles.shopCardHeader}>
+                  <View style={styles.shopIconBox}>
+                    <Text style={styles.shopIcon}>🏪</Text>
+                  </View>
+                  <View style={styles.shopTextColumn}>
+                    <Text style={styles.shopName}>{shop.shopName}</Text>
+                    <Text style={styles.shopOwner}>Owner: {shop.ownerName}</Text>
+                    <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
+                  </View>
+                  <View style={styles.ratingBadge}>
+                    <Text style={styles.ratingText}>⭐ 4.8</Text>
+                  </View>
+                </View>
+
+                {/* Horizontal divider */}
+                <View style={styles.shopDivider} />
+
+                {/* Footer preview badges representing catalog specialties */}
+                <View style={styles.shopFooterRow}>
+                  <Text style={styles.distanceText}>🚴 {shop.distance.toFixed(1)} km away</Text>
+                  <View style={styles.previewPillsRow}>
+                    <View style={styles.pill}><Text style={styles.pillText}>🥛 Fresh Milk</Text></View>
+                    <View style={styles.pill}><Text style={styles.pillText}>🌾 Groceries</Text></View>
+                    <View style={styles.pill}><Text style={styles.pillText}>⚡ Instant Pickup</Text></View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+
+        <TouchableOpacity 
+          style={styles.backBtn}
+          onPress={() => router.replace('/')}
+        >
+          <Text style={styles.backBtnText}>Exit to Main Menu</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
+  wrapper: {
+    flex: 1,
     backgroundColor: COLORS.background,
-    flexGrow: 1,
   },
-  header: {
-    marginTop: 20,
-    marginBottom: 20,
+  brandHeader: {
+    backgroundColor: COLORS.accent, // Yellow banner
+    paddingHorizontal: 20,
+    paddingTop: 45,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: COLORS.text,
+  locationHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
   },
-  subtitle: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginTop: 4,
+  brandTagline: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  locationCard: {
-    backgroundColor: COLORS.cardBackground,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 24,
-  },
-  locationSuccess: {
-    flexDirection: 'column',
-  },
-  locText: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
-  coordsText: {
-    color: COLORS.textMuted,
-    fontSize: 11,
+  locationSummary: {
+    color: '#1F2937',
+    fontSize: 13,
+    fontWeight: '700',
     marginTop: 2,
   },
-  refreshBtn: {
-    alignSelf: 'flex-start',
-    marginTop: 10,
-    backgroundColor: COLORS.border,
-    paddingVertical: 6,
+  gpsBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderRadius: 20,
+    paddingVertical: 5,
     paddingHorizontal: 12,
-    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  refreshBtnText: {
-    color: COLORS.text,
-    fontSize: 11,
+  gpsBadgeText: {
+    color: '#1F2937',
+    fontSize: 10,
     fontWeight: 'bold',
   },
-  locationPrompt: {
+  searchContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    height: 46,
+    flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
-  locErrorText: {
-    color: COLORS.error,
-    marginBottom: 10,
-    fontSize: 13,
+  searchIcon: {
+    marginRight: 10,
+    fontSize: 16,
   },
-  gpsBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
+  searchInput: {
+    flex: 1,
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '500',
   },
-  gpsBtnText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
+  container: {
+    padding: 20,
+    paddingBottom: 40,
+  },
+  categoriesSection: {
+    marginBottom: 24,
+  },
+  sectionHeading: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.text,
+    marginBottom: 14,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  categoryCard: {
+    width: '30%',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  categoryCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 1,
+  },
+  categoryEmoji: {
+    fontSize: 30,
+  },
+  categoryName: {
+    fontSize: 11,
+    color: COLORS.text,
+    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14,
+  },
+  promoBanner: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: 'rgba(12, 131, 31, 0.12)',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 24,
+  },
+  promoTitle: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  promoSub: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    marginTop: 3,
+    fontWeight: '500',
   },
   storesSection: {
     flex: 1,
   },
-  sectionHeading: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.text,
-    marginBottom: 16,
-  },
   emptyCard: {
     backgroundColor: COLORS.cardBackground,
-    padding: 24,
-    borderRadius: 12,
+    padding: 30,
+    borderRadius: 16,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.border,
+    elevation: 1,
   },
   emptyText: {
-    color: COLORS.textMuted,
+    color: COLORS.text,
+    fontWeight: 'bold',
+    fontSize: 15,
     textAlign: 'center',
-    fontSize: 14,
-    lineHeight: 20,
   },
   emptySubText: {
-    color: COLORS.accent,
+    color: COLORS.textMuted,
     textAlign: 'center',
     fontSize: 12,
-    marginTop: 8,
-    fontStyle: 'italic',
+    marginTop: 6,
+    lineHeight: 16,
+  },
+  retryBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  retryBtnText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   shopCard: {
     backgroundColor: COLORS.cardBackground,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: COLORS.border,
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+  },
+  shopCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  shopEmojiContainer: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: COLORS.background,
+  shopIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
   },
-  shopEmoji: {
-    fontSize: 22,
+  shopIcon: {
+    fontSize: 24,
   },
-  shopDetails: {
+  shopTextColumn: {
     flex: 1,
   },
   shopName: {
     color: COLORS.text,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   shopOwner: {
     color: COLORS.textMuted,
     fontSize: 12,
     marginTop: 2,
+    fontWeight: '500',
   },
   shopAddress: {
     color: COLORS.textMuted,
     fontSize: 11,
-    marginTop: 2,
+    marginTop: 1,
   },
-  distanceBadge: {
-    color: COLORS.accent,
-    fontWeight: 'bold',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  arrowIcon: {
-    color: COLORS.primary,
-    fontSize: 18,
+  ratingBadge: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEF3C7',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 4,
     paddingHorizontal: 8,
+  },
+  ratingText: {
+    color: '#D97706',
+    fontWeight: 'bold',
+    fontSize: 11,
+  },
+  shopDivider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: 12,
+  },
+  shopFooterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  distanceText: {
+    color: COLORS.primary,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  previewPillsRow: {
+    flexDirection: 'row',
+  },
+  pill: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    marginLeft: 6,
+  },
+  pillText: {
+    color: '#4B5563',
+    fontSize: 9,
+    fontWeight: '700',
   },
   backBtn: {
     borderColor: COLORS.border,
     borderWidth: 1,
-    padding: 16,
+    padding: 14,
     borderRadius: 8,
     alignItems: 'center',
     marginTop: 30,
-    marginBottom: 20,
+    backgroundColor: COLORS.cardBackground,
   },
   backBtnText: {
     color: COLORS.textMuted,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

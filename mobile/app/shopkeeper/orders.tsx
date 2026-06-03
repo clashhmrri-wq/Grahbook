@@ -59,7 +59,6 @@ export default function ShopkeeperOrders() {
     fetchOrders(false);
   };
 
-  // Update order status (ACCEPTED, PREPARING, READY, CANCELLED)
   const handleUpdateStatus = async (orderId: string, nextStatus: string) => {
     try {
       const response = await fetch(API_ROUTES.updateOrderStatus(orderId), {
@@ -70,7 +69,7 @@ export default function ShopkeeperOrders() {
       const data = await response.json();
       if (response.ok && data.success) {
         Alert.alert('Success', `Order status updated to ${nextStatus}.`);
-        fetchOrders(false); // Refresh
+        fetchOrders(false);
       } else {
         Alert.alert('Error', data.message || 'Failed to update order status.');
       }
@@ -80,14 +79,12 @@ export default function ShopkeeperOrders() {
     }
   };
 
-  // Open OTP verification modal
   const openOtpModal = (order: any) => {
     setSelectedOrder(order);
     setOtpInput('');
     setOtpModalVisible(true);
   };
 
-  // Complete Order via Secure OTP Verification
   const handleVerifyOtp = async () => {
     if (!selectedOrder) return;
     if (!/^\d{4}$/.test(otpInput)) {
@@ -105,9 +102,9 @@ export default function ShopkeeperOrders() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        Alert.alert('Verified! ✓', 'Handoff OTP matches. Order has been successfully COMPLETED.');
+        Alert.alert('Verified! ✓', 'Handoff OTP matches. Order completed successfully!');
         setOtpModalVisible(false);
-        fetchOrders(false); // Refresh list
+        fetchOrders(false);
       } else {
         Alert.alert('Verification Failed', data.message || 'OTP does not match. Try again.');
       }
@@ -119,29 +116,28 @@ export default function ShopkeeperOrders() {
     }
   };
 
-  // Helper to get status colors
-  const getStatusColor = (status: string) => {
+  const getStatusStyle = (status: string) => {
     switch (status) {
       case 'RECEIVED':
-        return '#9CA3AF'; // Gray
+        return { bg: '#2D2D34', text: '#9CA3AF', label: 'Received' };
       case 'ACCEPTED':
-        return '#3B82F6'; // Blue
+        return { bg: 'rgba(59,130,246,0.15)', text: '#3B82F6', label: 'Accepted' };
       case 'PREPARING':
-        return '#F59E0B'; // Orange/Yellow
+        return { bg: 'rgba(245,158,11,0.15)', text: '#F59E0B', label: 'Preparing Saman' };
       case 'READY':
-        return '#EC4899'; // Pink/Purple
+        return { bg: 'rgba(236,72,153,0.15)', text: '#EC4899', label: 'Ready' };
       case 'COMPLETED':
-        return '#10B981'; // Green
+        return { bg: 'rgba(16,185,129,0.15)', text: '#10B981', label: 'Completed' };
       case 'CANCELLED':
-        return '#EF4444'; // Red
+        return { bg: 'rgba(239,68,68,0.15)', text: '#EF4444', label: 'Cancelled' };
       default:
-        return '#F3F4F6';
+        return { bg: '#2D2D34', text: '#F3F4F6', label: status };
     }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: COLORS.bgDark }]}>
         <ActivityIndicator color={COLORS.primary} size="large" />
         <Text style={styles.loadingText}>Loading store orders...</Text>
       </View>
@@ -149,14 +145,14 @@ export default function ShopkeeperOrders() {
   }
 
   return (
-    <View style={styles.wrapper}>
-      {/* Header Banner */}
-      <View style={styles.header}>
+    <View style={[styles.wrapper, { backgroundColor: COLORS.bgDark }]}>
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
           <Text style={styles.backText}>◀ Dashboard</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>📦 Order Dispatch Manager</Text>
-        <Text style={styles.subtitle}>Accept orders and verify handoff codes below.</Text>
+        <Text style={styles.title}>📦 Active Dispatches</Text>
+        <Text style={styles.subtitle}>Fulfill incoming orders and verify OTP codes.</Text>
       </View>
 
       <ScrollView
@@ -164,39 +160,39 @@ export default function ShopkeeperOrders() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
       >
         {orders.length === 0 ? (
-          <View style={styles.emptyCard}>
+          <View style={[styles.emptyCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
             <Text style={styles.emptyText}>No orders received yet.</Text>
             <Text style={styles.emptySubText}>
-              Ensure neighborhood customers register nearby to discover and purchase from your catalog.
+              Ensure customer coordinates match your location radius to enable store discovery.
             </Text>
           </View>
         ) : (
           orders.map((order) => {
-            const statusColor = getStatusColor(order.status);
+            const statusStyle = getStatusStyle(order.status);
 
             return (
-              <View key={order.id} style={styles.orderCard}>
+              <View key={order.id} style={[styles.orderCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
                 {/* Header Row */}
                 <View style={styles.cardHeader}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.customerName}>👤 {order.customer.fullName}</Text>
                     <Text style={styles.customerPhone}>📞 WhatsApp: {order.customer.phoneNumber}</Text>
                   </View>
-                  <View style={[styles.statusBadge, { borderColor: statusColor }]}>
-                    <Text style={[styles.statusText, { color: statusColor }]}>{order.status}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                    <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
                   </View>
                 </View>
 
-                {/* Handoff preferences */}
+                {/* Handoff Type */}
                 <Text style={styles.deliveryPreference}>
-                  Method: {order.deliveryType === 'SELF_PICKUP' ? '🚶 Self Pickup' : '🏠 Home Delivery'}
+                  Preference: {order.deliveryType === 'SELF_PICKUP' ? '🚶 Customer Pickup' : '🏠 Home Delivery'}
                 </Text>
                 {order.deliveryType === 'HOME_DELIVERY' && order.customer.address ? (
                   <Text style={styles.deliveryAddress}>Address: {order.customer.address}</Text>
                 ) : null}
 
-                {/* Items listing */}
-                <View style={styles.itemsBox}>
+                {/* Items box */}
+                <View style={[styles.itemsBox, { backgroundColor: COLORS.bgDark }]}>
                   {order.items.map((item: any) => (
                     <View key={item.id} style={styles.itemRow}>
                       <Text style={styles.itemDetail}>
@@ -205,14 +201,14 @@ export default function ShopkeeperOrders() {
                       <Text style={styles.itemCost}>₹{(item.quantity * parseFloat(item.price)).toFixed(2)}</Text>
                     </View>
                   ))}
-                  <View style={styles.divider} />
+                  <View style={[styles.divider, { backgroundColor: COLORS.borderDark }]} />
                   <View style={styles.totalRow}>
-                    <Text style={styles.totalLbl}>Total Earnings</Text>
+                    <Text style={styles.totalLbl}>Payout Value</Text>
                     <Text style={styles.totalVal}>₹{parseFloat(order.totalAmount).toFixed(2)}</Text>
                   </View>
                 </View>
 
-                {/* Action Buttons based on Status */}
+                {/* Action Buttons */}
                 <View style={styles.actionButtonsRow}>
                   {order.status === 'RECEIVED' && (
                     <TouchableOpacity
@@ -228,7 +224,7 @@ export default function ShopkeeperOrders() {
                       style={[styles.btn, styles.btnPrepare]}
                       onPress={() => handleUpdateStatus(order.id, 'PREPARING')}
                     >
-                      <Text style={styles.btnText}>Start Preparing</Text>
+                      <Text style={styles.btnText}>Start Packing</Text>
                     </TouchableOpacity>
                   )}
 
@@ -237,7 +233,7 @@ export default function ShopkeeperOrders() {
                       style={[styles.btn, styles.btnReady]}
                       onPress={() => handleUpdateStatus(order.id, 'READY')}
                     >
-                      <Text style={styles.btnText}>Ready for Dispatch</Text>
+                      <Text style={styles.btnText}>Mark Packed & Ready</Text>
                     </TouchableOpacity>
                   )}
 
@@ -250,12 +246,12 @@ export default function ShopkeeperOrders() {
                     </TouchableOpacity>
                   )}
 
-                  {/* Cancel Button (available for non-final states) */}
+                  {/* Cancel Button */}
                   {order.status !== 'COMPLETED' && order.status !== 'CANCELLED' && (
                     <TouchableOpacity
                       style={[styles.btn, styles.btnCancel]}
                       onPress={() =>
-                        Alert.alert('Confirm Cancel', 'Are you sure you want to cancel this order?', [
+                        Alert.alert('Confirm Cancel', 'Cancel this order from your dispatch queue?', [
                           { text: 'No' },
                           { text: 'Yes, Cancel', onPress: () => handleUpdateStatus(order.id, 'CANCELLED') },
                         ])
@@ -274,29 +270,29 @@ export default function ShopkeeperOrders() {
       {/* OTP verification Modal */}
       <Modal visible={otpModalVisible} transparent={true} animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeading}>🛡️ Secure OTP Verification</Text>
+          <View style={[styles.modalContent, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
+            <Text style={styles.modalHeading}>🛡️ Verify Handoff Code</Text>
             <Text style={styles.modalSubheading}>
               Ask the customer for the 4-digit code shown on their order receipt.
             </Text>
 
             <TextInput
-              style={styles.otpInput}
+              style={[styles.otpInput, { backgroundColor: COLORS.bgDark, color: COLORS.accent, borderColor: COLORS.borderDark }]}
               keyboardType="numeric"
               maxLength={4}
-              placeholder="e.g. 1789"
-              placeholderTextColor={COLORS.textMuted}
+              placeholder="0000"
+              placeholderTextColor="#4B5563"
               value={otpInput}
               onChangeText={setOtpInput}
             />
 
             <View style={styles.modalActions}>
               <TouchableOpacity
-                style={[styles.modalBtn, styles.modalBtnClose]}
+                style={[styles.modalBtn, styles.modalBtnClose, { borderColor: COLORS.borderDark }]}
                 onPress={() => setOtpModalVisible(false)}
                 disabled={verifyingOtp}
               >
-                <Text style={styles.modalBtnCloseText}>Back</Text>
+                <Text style={styles.modalBtnCloseText}>Close</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -305,9 +301,9 @@ export default function ShopkeeperOrders() {
                 disabled={verifyingOtp}
               >
                 {verifyingOtp ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator color={COLORS.bgDark} />
                 ) : (
-                  <Text style={styles.modalBtnVerifyText}>Verify & Complete</Text>
+                  <Text style={styles.modalBtnVerifyText}>Verify OTP</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -321,15 +317,12 @@ export default function ShopkeeperOrders() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 45,
-    paddingBottom: 16,
-    backgroundColor: COLORS.cardBackground,
+    paddingBottom: 18,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
   },
   backBtn: {
     marginBottom: 8,
@@ -340,12 +333,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   title: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   subtitle: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 13,
     marginTop: 2,
   },
@@ -355,42 +348,37 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     marginTop: 12,
     fontSize: 14,
   },
   emptyCard: {
-    backgroundColor: COLORS.cardBackground,
     padding: 30,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
     alignItems: 'center',
     marginTop: 40,
   },
   emptyText: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
   },
   emptySubText: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 18,
   },
   orderCard: {
-    backgroundColor: COLORS.cardBackground,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
     padding: 16,
     marginBottom: 16,
   },
@@ -401,39 +389,37 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   customerName: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   customerPhone: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
     marginTop: 2,
   },
   statusBadge: {
-    borderWidth: 1,
     borderRadius: 6,
     paddingVertical: 3,
     paddingHorizontal: 8,
   },
   statusText: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   deliveryPreference: {
     color: COLORS.accent,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     marginTop: 4,
   },
   deliveryAddress: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 11,
     marginTop: 2,
     fontStyle: 'italic',
   },
   itemsBox: {
-    backgroundColor: COLORS.background,
     borderRadius: 10,
     padding: 12,
     marginTop: 12,
@@ -444,16 +430,15 @@ const styles = StyleSheet.create({
     marginVertical: 3,
   },
   itemDetail: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 12,
   },
   itemCost: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.border,
     marginVertical: 8,
   },
   totalRow: {
@@ -462,14 +447,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   totalLbl: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '500',
   },
   totalVal: {
     color: COLORS.accent,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   actionButtonsRow: {
     flexDirection: 'row',
@@ -496,54 +481,50 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
   },
   btnText: {
-    color: COLORS.background,
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   btnCancel: {
     flex: 0.4,
-    borderWidth: 1,
-    borderColor: COLORS.error,
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
     justifyContent: 'center',
   },
   btnCancelText: {
-    color: COLORS.error,
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#EF4444',
+    fontSize: 11,
+    fontWeight: '800',
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalContent: {
-    backgroundColor: COLORS.cardBackground,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
     width: '85%',
     padding: 24,
     alignItems: 'center',
   },
   modalHeading: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '800',
     marginBottom: 8,
   },
   modalSubheading: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 20,
   },
   otpInput: {
-    backgroundColor: COLORS.background,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.accent,
     borderRadius: 8,
     fontSize: 32,
     fontWeight: '900',
@@ -567,17 +548,16 @@ const styles = StyleSheet.create({
   },
   modalBtnClose: {
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   modalBtnCloseText: {
-    color: COLORS.textMuted,
-    fontWeight: 'bold',
+    color: '#9CA3AF',
+    fontWeight: '700',
   },
   modalBtnVerify: {
     backgroundColor: COLORS.primary,
   },
   modalBtnVerifyText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '800',
   },
 });

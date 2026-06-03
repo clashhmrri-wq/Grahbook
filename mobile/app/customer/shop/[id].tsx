@@ -7,13 +7,15 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Linking,
   Modal,
   TextInput,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { COLORS } from '../../../src/constants/localization';
 import { API_ROUTES } from '../../../src/config/api';
+
+const { width } = Dimensions.get('window');
 
 export default function ShopDetail() {
   const router = useRouter();
@@ -28,6 +30,9 @@ export default function ShopDetail() {
 
   // Tab view: 'catalog' or 'reviews'
   const [activeTab, setActiveTab] = useState<'catalog' | 'reviews'>('catalog');
+
+  // Sidebar Category Filter
+  const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   // Cart state: Record of productId -> quantity
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -67,6 +72,11 @@ export default function ShopDetail() {
       }
       if (prodResponse.ok && prodData.success) {
         setProducts(prodData.data);
+        // Default to first category if available
+        const categoriesList = Array.from(new Set(prodData.data.map((p: any) => p.category)));
+        if (categoriesList.length > 0) {
+          setSelectedCategory(categoriesList[0] as string);
+        }
       }
     } catch (error) {
       console.error(error);
@@ -98,6 +108,14 @@ export default function ShopDetail() {
       loadReviews();
     }
   }, [id]);
+
+  // Extract unique categories
+  const categories = Array.from(new Set(products.map((p) => p.category)));
+
+  // Filtered products list
+  const filteredProducts = selectedCategory
+    ? products.filter((p) => p.category === selectedCategory)
+    : products;
 
   // Cart actions
   const addToCart = (productId: string) => {
@@ -157,7 +175,6 @@ export default function ShopDetail() {
   // Submit Customer Info / Login
   const handleProceedToPayment = async () => {
     if (!savedCustomer) {
-      // Validate customer info input
       if (!customerName.trim()) {
         Alert.alert('Details Required', 'Please enter your full name.');
         return;
@@ -175,7 +192,6 @@ export default function ShopDetail() {
 
     setIsProcessing(true);
     try {
-      // 1. Authenticate / Register Customer in backend
       let customerId = savedCustomer?.id;
 
       if (!savedCustomer) {
@@ -200,7 +216,6 @@ export default function ShopDetail() {
         }
       }
 
-      // 2. Initialize Order in Database (status RECEIVED)
       const { itemsList } = getCartTotals();
       const orderResponse = await fetch(API_ROUTES.createOrder, {
         method: 'POST',
@@ -239,7 +254,6 @@ export default function ShopDetail() {
 
     setIsProcessing(true);
     try {
-      // 1. Ask backend for razorpay initialization credentials
       const payResponse = await fetch(API_ROUTES.createPaymentOrder, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -256,7 +270,6 @@ export default function ShopDetail() {
         return;
       }
 
-      // 2. Submit Mock Verification signature back to mark status as ACCEPTED
       const verifyResponse = await fetch(API_ROUTES.verifyPayment, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -270,7 +283,6 @@ export default function ShopDetail() {
       const verifyData = await verifyResponse.json();
 
       if (verifyResponse.ok && verifyData.success) {
-        // Clear customer cart
         setCart({});
         setCheckoutStep('success');
       } else {
@@ -287,7 +299,7 @@ export default function ShopDetail() {
   // Post neighborhood review
   const handlePostReview = async () => {
     if (!savedCustomer) {
-      Alert.alert('Login Required', 'Please enter your name and phone under checkout first to authenticate.');
+      Alert.alert('Details Required', 'Please enter your name and phone under checkout first to authenticate.');
       return;
     }
     if (!newComment.trim()) {
@@ -312,7 +324,7 @@ export default function ShopDetail() {
       if (response.ok && data.success) {
         Alert.alert('Thank You!', 'Your neighborhood trust review was posted successfully.');
         setNewComment('');
-        loadReviews(); // Refresh review list
+        loadReviews();
       } else {
         Alert.alert('Review Failed', data.message || 'Failed to submit review.');
       }
@@ -346,11 +358,11 @@ export default function ShopDetail() {
 
   return (
     <View style={styles.wrapper}>
-      {/* Top Shop Info header banner */}
+      {/* Top Shop Banner (Vibrant Yellow Layout Header) */}
       <View style={styles.shopBanner}>
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.headerBackBtn} onPress={() => router.back()}>
-            <Text style={styles.backArrowText}>◀ Shop Directory</Text>
+            <Text style={styles.backArrowText}>◀ Stores</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={styles.ordersHistoryBtn} 
@@ -361,7 +373,7 @@ export default function ShopDetail() {
                   params: { customerId: savedCustomer.id, customerName: savedCustomer.fullName }
                 });
               } else {
-                Alert.alert('Login Needed', 'Please place an order or fill details to see your history.');
+                Alert.alert('Login Needed', 'Register during checkout to see your orders history.');
               }
             }}
           >
@@ -369,20 +381,27 @@ export default function ShopDetail() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.shopName}>🏪 {shop.shopName}</Text>
-        <Text style={styles.shopOwner}>Owner: {shop.ownerName}</Text>
-        <Text style={styles.shopAddress}>{shop.address}, {shop.city}</Text>
-        <Text style={styles.whatsappNotice}>📞 Contact: {shop.phoneNumber}</Text>
+        <View style={styles.shopMetaRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.shopName}>🏪 {shop.shopName}</Text>
+            <Text style={styles.shopOwner}>Merchant: {shop.ownerName}</Text>
+            <Text style={styles.shopAddress}>{shop.address}, {shop.city}</Text>
+          </View>
+          <View style={styles.deliveryTag}>
+            <Text style={styles.deliveryTagTitle}>EXPRESS</Text>
+            <Text style={styles.deliveryTagTime}>10 MINS</Text>
+          </View>
+        </View>
       </View>
 
-      {/* Tabs segment */}
+      {/* Tabs */}
       <View style={styles.tabsRow}>
         <TouchableOpacity
           style={[styles.tabButton, activeTab === 'catalog' && styles.tabButtonActive]}
           onPress={() => setActiveTab('catalog')}
         >
           <Text style={[styles.tabText, activeTab === 'catalog' && styles.tabTextActive]}>
-            📚 Products ({products.length})
+            🛍️ Store items
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -390,44 +409,63 @@ export default function ShopDetail() {
           onPress={() => setActiveTab('reviews')}
         >
           <Text style={[styles.tabText, activeTab === 'reviews' && styles.tabTextActive]}>
-            ⭐ Reviews ({reviews.length})
+            ⭐ Trust Reviews ({reviews.length})
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* Catalog lists / Reviews Lists */}
-      <ScrollView contentContainerStyle={styles.container}>
-        {activeTab === 'catalog' ? (
-          <View style={styles.catalogSection}>
-            {products.length === 0 ? (
-              <Text style={styles.emptyText}>No products available at this store.</Text>
+      {/* Screen Body */}
+      {activeTab === 'catalog' ? (
+        <View style={styles.catalogContainer}>
+          {/* Left Category Sidebar */}
+          <View style={styles.sidebar}>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {categories.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[styles.sidebarTab, selectedCategory === cat && styles.sidebarTabActive]}
+                  onPress={() => setSelectedCategory(cat)}
+                >
+                  <Text style={[styles.sidebarTabText, selectedCategory === cat && styles.sidebarTabTextActive]}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Right Product Grid List */}
+          <ScrollView style={styles.productScroll} contentContainerStyle={styles.productContent}>
+            <Text style={styles.categoryTitle}>{selectedCategory || 'Products'}</Text>
+            {filteredProducts.length === 0 ? (
+              <Text style={styles.emptyText}>No items listed under this category.</Text>
             ) : (
-              products.map((item) => {
-                const qtyInCart = cart[item.id] || 0;
+              filteredProducts.map((item) => {
+                const qty = cart[item.id] || 0;
                 return (
-                  <View key={item.id} style={styles.itemCard}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      {item.description ? <Text style={styles.itemDesc}>{item.description}</Text> : null}
-                      <Text style={styles.itemPrice}>₹{parseFloat(item.price).toFixed(2)}</Text>
-                      <Text style={styles.itemCat}>{item.category}</Text>
+                  <View key={item.id} style={styles.productGridCard}>
+                    <View style={styles.productMeta}>
+                      <Text style={styles.productName}>{item.name}</Text>
+                      {item.description ? <Text style={styles.productDesc}>{item.description}</Text> : null}
+                      <Text style={styles.productWeight}>500 g</Text> {/* Standardized mock grocery weight */}
+                      <Text style={styles.productPrice}>₹{parseFloat(item.price).toFixed(2)}</Text>
                     </View>
 
-                    {/* Quantity selector / Add to Cart */}
-                    <View style={styles.cartControl}>
-                      {qtyInCart > 0 ? (
-                        <View style={styles.qtyRow}>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => removeFromCart(item.id)}>
-                            <Text style={styles.qtyBtnText}>-</Text>
+                    {/* Standardized Blinkit green bordered buttons */}
+                    <View style={styles.buttonContainer}>
+                      {qty > 0 ? (
+                        <View style={styles.activeCounter}>
+                          <TouchableOpacity style={styles.counterBtn} onPress={() => removeFromCart(item.id)}>
+                            <Text style={styles.counterBtnText}>-</Text>
                           </TouchableOpacity>
-                          <Text style={styles.qtyVal}>{qtyInCart}</Text>
-                          <TouchableOpacity style={styles.qtyBtn} onPress={() => addToCart(item.id)}>
-                            <Text style={styles.qtyBtnText}>+</Text>
+                          <Text style={styles.counterVal}>{qty}</Text>
+                          <TouchableOpacity style={styles.counterBtn} onPress={() => addToCart(item.id)}>
+                            <Text style={styles.counterBtnText}>+</Text>
                           </TouchableOpacity>
                         </View>
                       ) : (
-                        <TouchableOpacity style={styles.addCartBtn} onPress={() => addToCart(item.id)}>
-                          <Text style={styles.addCartBtnText}>ADD</Text>
+                        <TouchableOpacity style={styles.addItemBtn} onPress={() => addToCart(item.id)}>
+                          <Text style={styles.addItemBtnText}>ADD</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -435,114 +473,110 @@ export default function ShopDetail() {
                 );
               })
             )}
+          </ScrollView>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.reviewsScroll}>
+          {/* Rating Display Summary */}
+          <View style={styles.reviewsSummary}>
+            <Text style={styles.reviewsSummaryTitle}>Community Trust Rating</Text>
+            <Text style={styles.reviewsSummaryAvg}>
+              {(reviews.reduce((acc, r) => acc + r.rating, 0) / (reviews.length || 1)).toFixed(1)} ★
+            </Text>
+            <Text style={styles.reviewsSummaryCount}>Based on {reviews.length} local ratings</Text>
           </View>
-        ) : (
-          <View style={styles.reviewsSection}>
-            {/* Average rating summary banner */}
-            <View style={styles.reviewsSummary}>
-              <Text style={styles.reviewsSummaryTitle}>Community Trust Rating</Text>
-              <Text style={styles.reviewsSummaryStars}>
-                {'★'.repeat(Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / (reviews.length || 1))) +
-                 '☆'.repeat(5 - Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / (reviews.length || 1)))}
-              </Text>
-              <Text style={styles.reviewsSummaryAvg}>
-                {(reviews.reduce((acc, r) => acc + r.rating, 0) / (reviews.length || 1)).toFixed(1)} / 5.0 Rating Stars
-              </Text>
-            </View>
 
-            {/* Write review form */}
-            <View style={styles.writeReviewCard}>
-              <Text style={styles.writeReviewTitle}>Write Store Review</Text>
-              <View style={styles.starSelectRow}>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <TouchableOpacity key={star} onPress={() => setNewRating(star)}>
-                    <Text style={[styles.starOption, star <= newRating && styles.starOptionSelected]}>★</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-              <TextInput
-                style={styles.reviewInput}
-                placeholder={savedCustomer ? "Share your local feedback here..." : "Fill checkout details first to login & leave review."}
-                placeholderTextColor={COLORS.textMuted}
-                value={newComment}
-                onChangeText={setNewComment}
-                multiline
-                numberOfLines={3}
-                editable={!!savedCustomer}
-              />
-              <TouchableOpacity 
-                style={[styles.postReviewBtn, !savedCustomer && styles.postReviewBtnDisabled]} 
-                onPress={handlePostReview}
-                disabled={postingReview || !savedCustomer}
-              >
-                {postingReview ? (
-                  <ActivityIndicator color={COLORS.background} />
-                ) : (
-                  <Text style={styles.postReviewBtnText}>Submit Feedback</Text>
-                )}
-              </TouchableOpacity>
+          {/* Write feedback */}
+          <View style={styles.writeReviewCard}>
+            <Text style={styles.writeReviewTitle}>Leave Local Feedback</Text>
+            <View style={styles.starRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setNewRating(star)}>
+                  <Text style={[styles.starIcon, star <= newRating && styles.starIconActive]}>★</Text>
+                </TouchableOpacity>
+              ))}
             </View>
+            <TextInput
+              style={styles.reviewInput}
+              placeholder={savedCustomer ? "Share your shopping feedback..." : "Please fill checkout details first to login & write reviews."}
+              placeholderTextColor="#9CA3AF"
+              value={newComment}
+              onChangeText={setNewComment}
+              multiline
+              numberOfLines={3}
+              editable={!!savedCustomer}
+            />
+            <TouchableOpacity 
+              style={[styles.submitReviewBtn, !savedCustomer && styles.submitReviewBtnDisabled]} 
+              onPress={handlePostReview}
+              disabled={postingReview || !savedCustomer}
+            >
+              {postingReview ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitReviewText}>Submit Review</Text>
+              )}
+            </TouchableOpacity>
+          </View>
 
-            {/* Reviews history list */}
-            {reviewsLoading ? (
-              <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 20 }} />
-            ) : reviews.length === 0 ? (
-              <Text style={styles.emptyText}>Be the first to review this store!</Text>
-            ) : (
-              reviews.map((rev) => (
-                <View key={rev.id} style={styles.reviewCard}>
-                  <View style={styles.reviewHeader}>
-                    <Text style={styles.reviewerName}>{rev.customer.fullName}</Text>
-                    <Text style={styles.reviewStars}>{'★'.repeat(rev.rating)}</Text>
-                  </View>
-                  <Text style={styles.reviewComment}>{rev.comment}</Text>
-                  <Text style={styles.reviewDate}>{new Date(rev.createdAt).toLocaleDateString('en-IN')}</Text>
+          {/* Reviews list */}
+          {reviewsLoading ? (
+            <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
+          ) : reviews.length === 0 ? (
+            <Text style={styles.emptyText}>Be the first to review this grocery store!</Text>
+          ) : (
+            reviews.map((rev) => (
+              <View key={rev.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Text style={styles.reviewerName}>{rev.customer.fullName}</Text>
+                  <Text style={styles.reviewRating}>{'★'.repeat(rev.rating)}</Text>
                 </View>
-              ))
-            )}
-          </View>
-        )}
-      </ScrollView>
+                <Text style={styles.reviewComment}>{rev.comment}</Text>
+                <Text style={styles.reviewDate}>{new Date(rev.createdAt).toLocaleDateString('en-IN')}</Text>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
 
-      {/* Floating Checkout bar at bottom */}
+      {/* Floating Blinkit-style Cart drawer */}
       {totalItemsCount > 0 && activeTab === 'catalog' && (
-        <View style={styles.checkoutBar}>
-          <View style={styles.checkoutInfo}>
-            <Text style={styles.checkoutQty}>{totalItemsCount} Products</Text>
-            <Text style={styles.checkoutPrice}>₹{totalPriceCount.toFixed(2)}</Text>
+        <View style={styles.cartDrawer}>
+          <View>
+            <Text style={styles.cartItemsCount}>{totalItemsCount} ITEM{totalItemsCount > 1 ? 'S' : ''}</Text>
+            <Text style={styles.cartTotalPrice}>₹{totalPriceCount.toFixed(2)}</Text>
           </View>
-          <TouchableOpacity style={styles.whatsappCheckoutBtn} onPress={openCheckout}>
-            <Text style={styles.whatsappCheckoutText}>Proceed to Checkout 💳</Text>
+          <TouchableOpacity style={styles.checkoutBtn} onPress={openCheckout}>
+            <Text style={styles.checkoutBtnText}>View Cart ➔</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Checkout Wizard Modal */}
+      {/* Checkout Botttom Sheet Modal */}
       <Modal visible={checkoutVisible} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            {/* Header */}
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🛍️ Secure Order Checkout</Text>
+              <Text style={styles.modalTitle}>📦 Checkout Bill</Text>
               <TouchableOpacity onPress={() => setCheckoutVisible(false)} disabled={isProcessing}>
-                <Text style={styles.modalCloseText}>Close</Text>
+                <Text style={styles.modalCloseBtn}>Close</Text>
               </TouchableOpacity>
             </View>
 
             {checkoutStep === 'details' && (
-              <ScrollView style={styles.modalBody}>
+              <ScrollView style={{ marginBottom: 10 }} showsVerticalScrollIndicator={false}>
                 {savedCustomer ? (
-                  <View style={styles.savedUserAlert}>
-                    <Text style={styles.savedUserTitle}>✓ Logged In</Text>
-                    <Text style={styles.savedUserSub}>Ordering as {savedCustomer.fullName} ({savedCustomer.phoneNumber})</Text>
+                  <View style={styles.savedUserBadge}>
+                    <Text style={styles.savedUserTitle}>✓ Logged In as {savedCustomer.fullName}</Text>
+                    <Text style={styles.savedUserSub}>{savedCustomer.phoneNumber}</Text>
                   </View>
                 ) : (
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Enter Customer Name</Text>
+                    <Text style={styles.inputLabel}>Full Name</Text>
                     <TextInput
                       style={styles.inputField}
                       placeholder="e.g., Ramesh Kumar"
-                      placeholderTextColor={COLORS.textMuted}
+                      placeholderTextColor="#9CA3AF"
                       value={customerName}
                       onChangeText={setCustomerName}
                     />
@@ -550,7 +584,7 @@ export default function ShopDetail() {
                     <TextInput
                       style={styles.inputField}
                       placeholder="e.g., 9876543210"
-                      placeholderTextColor={COLORS.textMuted}
+                      placeholderTextColor="#9CA3AF"
                       keyboardType="numeric"
                       value={customerPhone}
                       onChangeText={setCustomerPhone}
@@ -558,22 +592,22 @@ export default function ShopDetail() {
                   </View>
                 )}
 
-                {/* Delivery Type Option */}
-                <Text style={styles.inputLabel}>Handoff Method</Text>
-                <View style={styles.deliveryToggleRow}>
+                {/* Delivery toggle */}
+                <Text style={styles.inputLabel}>Choose Handoff Type</Text>
+                <View style={styles.deliveryRow}>
                   <TouchableOpacity
-                    style={[styles.toggleBtn, deliveryType === 'SELF_PICKUP' && styles.toggleBtnActive]}
+                    style={[styles.deliveryBtn, deliveryType === 'SELF_PICKUP' && styles.deliveryBtnActive]}
                     onPress={() => setDeliveryType('SELF_PICKUP')}
                   >
-                    <Text style={[styles.toggleBtnText, deliveryType === 'SELF_PICKUP' && styles.toggleBtnTextActive]}>
+                    <Text style={[styles.deliveryBtnText, deliveryType === 'SELF_PICKUP' && styles.deliveryBtnTextActive]}>
                       🚶 Self Pickup
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.toggleBtn, deliveryType === 'HOME_DELIVERY' && styles.toggleBtnActive]}
+                    style={[styles.deliveryBtn, deliveryType === 'HOME_DELIVERY' && styles.deliveryBtnActive]}
                     onPress={() => setDeliveryType('HOME_DELIVERY')}
                   >
-                    <Text style={[styles.toggleBtnText, deliveryType === 'HOME_DELIVERY' && styles.toggleBtnTextActive]}>
+                    <Text style={[styles.deliveryBtnText, deliveryType === 'HOME_DELIVERY' && styles.deliveryBtnTextActive]}>
                       🏠 Home Delivery
                     </Text>
                   </TouchableOpacity>
@@ -583,9 +617,9 @@ export default function ShopDetail() {
                   <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Delivery Address</Text>
                     <TextInput
-                      style={[styles.inputField, { height: 80 }]}
-                      placeholder="Enter house no., landmark, street address..."
-                      placeholderTextColor={COLORS.textMuted}
+                      style={[styles.inputField, { height: 60 }]}
+                      placeholder="Street name, flat, landmark address..."
+                      placeholderTextColor="#9CA3AF"
                       multiline
                       value={deliveryAddress}
                       onChangeText={setDeliveryAddress}
@@ -593,21 +627,21 @@ export default function ShopDetail() {
                   </View>
                 )}
 
-                {/* Cart summary */}
-                <View style={styles.checkoutSummaryCard}>
-                  <Text style={styles.summaryTitle}>Bill details</Text>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLbl}>Item Total</Text>
-                    <Text style={styles.summaryVal}>₹{totalPriceCount.toFixed(2)}</Text>
+                {/* Bill Summary */}
+                <View style={styles.billSummaryCard}>
+                  <Text style={styles.billTitle}>Bill Details</Text>
+                  <View style={styles.billRow}>
+                    <Text style={styles.billLbl}>Subtotal</Text>
+                    <Text style={styles.billVal}>₹{totalPriceCount.toFixed(2)}</Text>
                   </View>
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.summaryLbl}>Service Fee</Text>
-                    <Text style={[styles.summaryVal, { color: COLORS.primary }]}>FREE</Text>
+                  <View style={styles.billRow}>
+                    <Text style={styles.billLbl}>Delivery / Service fee</Text>
+                    <Text style={[styles.billVal, { color: COLORS.primary, fontWeight: 'bold' }]}>FREE</Text>
                   </View>
-                  <View style={styles.summaryDivider} />
-                  <View style={styles.summaryRow}>
-                    <Text style={styles.totalBillLbl}>Total Amount</Text>
-                    <Text style={styles.totalBillVal}>₹{totalPriceCount.toFixed(2)}</Text>
+                  <View style={styles.billDivider} />
+                  <View style={styles.billRow}>
+                    <Text style={styles.billTotalLbl}>Total Payable</Text>
+                    <Text style={styles.billTotalVal}>₹{totalPriceCount.toFixed(2)}</Text>
                   </View>
                 </View>
 
@@ -617,75 +651,65 @@ export default function ShopDetail() {
                   disabled={isProcessing}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator color={COLORS.background} />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.proceedPaymentText}>Proceed to Payment ➜</Text>
+                    <Text style={styles.proceedPaymentText}>Proceed to Payment ➔</Text>
                   )}
                 </TouchableOpacity>
               </ScrollView>
             )}
 
             {checkoutStep === 'payment' && createdOrder && (
-              <View style={styles.paymentContainer}>
-                <Text style={styles.paymentHeading}>Razorpay Payment Gateway</Text>
-                <Text style={styles.paymentSubheading}>Simulate digital UPI checkouts securely via Razorpay sandbox integration.</Text>
+              <View style={styles.paymentBox}>
+                <Text style={styles.paymentHeading}>Secure Payment Simulation</Text>
+                <Text style={styles.paymentSub}>Paying via integrated Razorpay gateway sandbox.</Text>
 
-                <View style={styles.paymentDetailsCard}>
-                  <View style={styles.payRow}>
-                    <Text style={styles.payLbl}>Order ID:</Text>
-                    <Text style={styles.payVal}>{createdOrder.id.substring(0, 18)}...</Text>
+                <View style={styles.paymentDetails}>
+                  <View style={styles.payInfoRow}>
+                    <Text style={styles.payInfoLbl}>Paying To:</Text>
+                    <Text style={styles.payInfoVal}>{shop.shopName}</Text>
                   </View>
-                  <View style={styles.payRow}>
-                    <Text style={styles.payLbl}>Customer ID:</Text>
-                    <Text style={styles.payVal}>{createdOrder.customerId.substring(0, 18)}...</Text>
-                  </View>
-                  <View style={styles.payRow}>
-                    <Text style={styles.payLbl}>Payable Amount:</Text>
-                    <Text style={styles.payTotalVal}>₹{parseFloat(createdOrder.totalAmount).toFixed(2)}</Text>
+                  <View style={styles.payInfoRow}>
+                    <Text style={styles.payInfoLbl}>Amount:</Text>
+                    <Text style={styles.payInfoTotal}>₹{parseFloat(createdOrder.totalAmount).toFixed(2)}</Text>
                   </View>
                 </View>
 
                 <TouchableOpacity 
-                  style={styles.simulatePayBtn} 
+                  style={styles.simPayBtn} 
                   onPress={handleSimulatePayment}
                   disabled={isProcessing}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator color={COLORS.background} />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.simulatePayBtnText}>💰 Settle Razorpay Payment (Demo Success)</Text>
+                    <Text style={styles.simPayBtnText}>💸 Approve Sandbox UPI Payment</Text>
                   )}
                 </TouchableOpacity>
-
-                <Text style={styles.paymentFooterNote}>
-                  * Note: In local development environments, verification tokens are validated on mock modes without live cards.
-                </Text>
               </View>
             )}
 
             {checkoutStep === 'success' && createdOrder && (
-              <View style={styles.successContainer}>
-                <Text style={styles.successHeading}>🎉 Order Placed Successfully!</Text>
-                <Text style={styles.successSub}>Your payment has been settled. Show the OTP below to the store owner upon pickup/delivery.</Text>
+              <View style={styles.successBox}>
+                <Text style={styles.successTitle}>🎉 Order Accepted!</Text>
+                <Text style={styles.successSub}>Show the OTP below to the store owner upon handoff.</Text>
 
                 <View style={styles.otpCard}>
-                  <Text style={styles.otpLabel}>SECURE HANDOFF OTP</Text>
-                  <Text style={styles.otpValue}>{createdOrder.otpCode || '1789'}</Text>
-                  <Text style={styles.otpHelper}>Storekeeper will enter this code to mark the order completed.</Text>
+                  <Text style={styles.otpLabel}>DELIVERY HANDOFF OTP</Text>
+                  <Text style={styles.otpValue}>{createdOrder.otpCode}</Text>
                 </View>
 
                 <TouchableOpacity
-                  style={styles.doneBtn}
+                  style={styles.viewOrdersBtn}
                   onPress={() => {
                     setCheckoutVisible(false);
-                    // Navigate to customer orders history
                     router.push({
                       pathname: '/customer/orders',
                       params: { customerId: createdOrder.customerId, customerName: savedCustomer?.fullName || 'Guest' }
                     });
                   }}
                 >
-                  <Text style={styles.doneBtnText}>View My Orders</Text>
+                  <Text style={styles.viewOrdersText}>Track Order History</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -699,630 +723,663 @@ export default function ShopDetail() {
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 110, // Leave room for checkout bar
+    backgroundColor: '#FFFFFF', // Clean White storefront background
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: COLORS.textMuted,
-    marginTop: 12,
-    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 10,
+    fontSize: 13,
   },
   errorContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   errorText: {
     color: COLORS.error,
-    fontSize: 16,
-    marginBottom: 20,
+    fontSize: 15,
+  },
+  backBtn: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 20,
+  },
+  backBtnText: {
+    color: '#6B7280',
   },
   shopBanner: {
-    backgroundColor: COLORS.cardBackground,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
-    padding: 20,
+    backgroundColor: COLORS.accent, // Yellow Header
+    paddingHorizontal: 20,
     paddingTop: 45,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
   },
   headerBackBtn: {
     alignSelf: 'flex-start',
   },
   backArrowText: {
-    color: COLORS.primary,
-    fontSize: 14,
+    color: '#1F2937',
     fontWeight: 'bold',
+    fontSize: 14,
   },
   ordersHistoryBtn: {
-    backgroundColor: COLORS.border,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   ordersHistoryText: {
-    color: COLORS.text,
+    color: '#1F2937',
     fontSize: 12,
     fontWeight: 'bold',
+  },
+  shopMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
   },
   shopName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    color: '#1F2937',
+    fontSize: 20,
+    fontWeight: '800',
   },
   shopOwner: {
-    fontSize: 14,
-    color: COLORS.textMuted,
-    marginTop: 4,
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
   },
   shopAddress: {
-    fontSize: 12,
-    color: COLORS.textMuted,
-    marginTop: 4,
+    color: '#6B7280',
+    fontSize: 11,
+    marginTop: 1,
   },
-  whatsappNotice: {
-    fontSize: 12,
-    color: COLORS.accent,
-    fontWeight: '500',
-    marginTop: 6,
+  deliveryTag: {
+    backgroundColor: '#0C831F', // Blinkit Delivery Badge
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+  },
+  deliveryTagTitle: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  deliveryTagTime: {
+    color: '#FCDB3A',
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   tabsRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.cardBackground,
+    borderColor: '#E5E7EB',
   },
   tabButton: {
     flex: 1,
     paddingVertical: 14,
     alignItems: 'center',
-    borderBottomWidth: 2,
+    borderBottomWidth: 3,
     borderColor: 'transparent',
   },
   tabButtonActive: {
     borderColor: COLORS.primary,
   },
   tabText: {
-    color: COLORS.textMuted,
-    fontSize: 14,
-    fontWeight: '600',
+    color: '#6B7280',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   tabTextActive: {
     color: COLORS.primary,
   },
-  catalogSection: {
+  catalogContainer: {
     flex: 1,
+    flexDirection: 'row',
+  },
+  sidebar: {
+    width: '25%',
+    backgroundColor: '#F3F4F6', // Light gray Category Selector Sidebar
+    borderRightWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  sidebarTab: {
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  sidebarTabActive: {
+    backgroundColor: '#FFFFFF',
+    borderLeftWidth: 4,
+    borderColor: COLORS.primary,
+  },
+  sidebarTabText: {
+    color: '#4B5563',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  sidebarTabTextActive: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
+  productScroll: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  productContent: {
+    padding: 14,
+    paddingBottom: 100, // Room for cart
+  },
+  categoryTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1F2937',
+    marginBottom: 12,
+    textTransform: 'uppercase',
   },
   emptyText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
+    color: '#9CA3AF',
+    fontSize: 12,
     fontStyle: 'italic',
     textAlign: 'center',
-    paddingVertical: 40,
+    marginTop: 30,
   },
-  itemCard: {
-    backgroundColor: COLORS.cardBackground,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 16,
-    marginBottom: 12,
+  productGridCard: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  itemName: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: 'bold',
+  productMeta: {
+    flex: 1,
   },
-  itemDesc: {
-    color: COLORS.textMuted,
-    fontSize: 12,
+  productName: {
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  productDesc: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  productWeight: {
+    color: '#6B7280',
+    fontSize: 10,
     marginTop: 3,
+    fontWeight: '600',
   },
-  itemPrice: {
-    color: COLORS.accent,
-    fontSize: 15,
-    fontWeight: 'bold',
+  productPrice: {
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '800',
     marginTop: 6,
   },
-  itemCat: {
-    color: COLORS.primary,
-    fontSize: 10,
-    marginTop: 4,
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
-  },
-  cartControl: {
+  buttonContainer: {
     marginLeft: 14,
   },
-  addCartBtn: {
-    borderWidth: 1,
+  addItemBtn: {
     borderColor: COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 6,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 18,
+    backgroundColor: '#FFFFFF',
+    elevation: 1,
   },
-  addCartBtnText: {
+  addItemBtnText: {
     color: COLORS.primary,
-    fontSize: 12,
-    fontWeight: 'bold',
+    fontSize: 11,
+    fontWeight: '800',
   },
-  qtyRow: {
+  activeCounter: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 6,
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    elevation: 1,
   },
-  qtyBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
+  counterBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  qtyBtnText: {
-    color: COLORS.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
+  counterBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
-  qtyVal: {
-    color: COLORS.text,
-    fontSize: 14,
-    paddingHorizontal: 8,
-    fontWeight: 'bold',
+  counterVal: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    paddingHorizontal: 4,
   },
-  checkoutBar: {
+  cartDrawer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.cardBackground,
-    borderTopWidth: 1,
-    borderColor: COLORS.border,
+    bottom: 16,
+    left: 16,
+    right: 16,
+    backgroundColor: COLORS.primary,
+    borderRadius: 14,
     padding: 16,
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    elevation: 6,
   },
-  checkoutInfo: {
-    marginRight: 16,
+  cartItemsCount: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  checkoutQty: {
-    color: COLORS.textMuted,
-    fontSize: 12,
+  cartTotalPrice: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 1,
   },
-  checkoutPrice: {
-    color: COLORS.accent,
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  whatsappCheckoutBtn: {
-    flex: 1,
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
+  checkoutBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  whatsappCheckoutText: {
-    color: COLORS.background,
+  checkoutBtnText: {
+    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
-  backBtn: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 12,
-    borderRadius: 8,
-  },
-  backBtnText: {
-    color: COLORS.textMuted,
-  },
-  reviewsSection: {
-    flex: 1,
+  reviewsScroll: {
+    padding: 20,
+    paddingBottom: 40,
   },
   reviewsSummary: {
-    backgroundColor: COLORS.cardBackground,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     marginBottom: 20,
   },
   reviewsSummaryTitle: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  reviewsSummaryStars: {
-    color: COLORS.accent,
-    fontSize: 24,
-    marginVertical: 4,
+    color: '#D97706',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
   },
   reviewsSummaryAvg: {
-    color: COLORS.textMuted,
-    fontSize: 12,
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#D97706',
+    marginVertical: 4,
+  },
+  reviewsSummaryCount: {
+    color: '#6B7280',
+    fontSize: 11,
   },
   writeReviewCard: {
-    backgroundColor: COLORS.cardBackground,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 16,
     marginBottom: 20,
+    elevation: 1,
   },
   writeReviewTitle: {
-    color: COLORS.text,
-    fontSize: 15,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#1F2937',
+    fontSize: 14,
+    fontWeight: '800',
   },
-  starSelectRow: {
+  starRow: {
     flexDirection: 'row',
-    marginBottom: 12,
+    marginVertical: 10,
   },
-  starOption: {
+  starIcon: {
     fontSize: 28,
-    color: COLORS.border,
+    color: '#E5E7EB',
     marginRight: 6,
   },
-  starOptionSelected: {
-    color: COLORS.accent,
+  starIconActive: {
+    color: '#F59E0B',
   },
   reviewInput: {
-    backgroundColor: COLORS.background,
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
     borderRadius: 8,
     padding: 10,
+    color: '#1F2937',
     fontSize: 13,
     marginBottom: 12,
     textAlignVertical: 'top',
   },
-  postReviewBtn: {
+  submitReviewBtn: {
     backgroundColor: COLORS.primary,
+    borderRadius: 8,
     paddingVertical: 10,
-    borderRadius: 6,
     alignItems: 'center',
   },
-  postReviewBtnDisabled: {
-    backgroundColor: COLORS.border,
+  submitReviewBtnDisabled: {
+    backgroundColor: '#BDC3C7',
   },
-  postReviewBtnText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
-    fontSize: 13,
+  submitReviewText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 12,
   },
   reviewCard: {
-    backgroundColor: COLORS.cardBackground,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#E5E7EB',
     borderRadius: 12,
     padding: 14,
     marginBottom: 10,
+    elevation: 1,
   },
   reviewHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
   },
   reviewerName: {
-    color: COLORS.text,
+    color: '#1F2937',
+    fontWeight: '800',
     fontSize: 13,
-    fontWeight: 'bold',
   },
-  reviewStars: {
-    color: COLORS.accent,
-    fontSize: 12,
+  reviewRating: {
+    color: '#F59E0B',
+    fontSize: 11,
   },
   reviewComment: {
-    color: COLORS.textMuted,
+    color: '#4B5563',
     fontSize: 12,
     marginTop: 6,
   },
   reviewDate: {
-    color: COLORS.border,
-    fontSize: 10,
+    color: '#9CA3AF',
+    fontSize: 9,
     textAlign: 'right',
     marginTop: 4,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: COLORS.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
     padding: 24,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
-    marginBottom: 16,
+    borderColor: '#E5E7EB',
+    paddingBottom: 14,
+    marginBottom: 14,
   },
   modalTitle: {
-    color: COLORS.text,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  modalCloseText: {
-    color: COLORS.error,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  modalBody: {
-    marginBottom: 10,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  inputField: {
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    color: COLORS.text,
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 14,
-  },
-  deliveryToggleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  toggleBtn: {
-    flex: 1,
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-  },
-  toggleBtnActive: {
-    borderColor: COLORS.primary,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  toggleBtnText: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  toggleBtnTextActive: {
-    color: COLORS.primary,
-  },
-  checkoutSummaryCard: {
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 12,
-    padding: 14,
-    marginVertical: 16,
-  },
-  summaryTitle: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  summaryLbl: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
-  summaryVal: {
-    color: COLORS.text,
-    fontSize: 13,
-  },
-  summaryDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 8,
-  },
-  summaryRowBold: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  totalBillLbl: {
-    color: COLORS.text,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  totalBillVal: {
-    color: COLORS.accent,
+    color: '#1F2937',
     fontSize: 16,
+    fontWeight: '800',
+  },
+  modalCloseBtn: {
+    color: COLORS.error,
     fontWeight: 'bold',
+    fontSize: 13,
   },
-  proceedPaymentBtn: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 30,
-  },
-  proceedPaymentText: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  savedUserAlert: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+  savedUserBadge: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#DCFCE7',
     borderWidth: 1,
-    borderColor: COLORS.primary,
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
     marginBottom: 16,
   },
   savedUserTitle: {
     color: COLORS.primary,
-    fontSize: 13,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '800',
   },
   savedUserSub: {
-    color: COLORS.text,
-    fontSize: 12,
-    marginTop: 2,
+    color: '#4B5563',
+    fontSize: 11,
+    marginTop: 1,
   },
-  paymentContainer: {
-    paddingVertical: 10,
-    alignItems: 'center',
-  },
-  paymentHeading: {
-    color: COLORS.primary,
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  paymentSubheading: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 20,
-  },
-  paymentDetailsCard: {
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    width: '100%',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 24,
-  },
-  payRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 6,
-  },
-  payLbl: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-  },
-  payVal: {
-    color: COLORS.text,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  payTotalVal: {
-    color: COLORS.accent,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  simulatePayBtn: {
-    backgroundColor: COLORS.accent,
-    width: '100%',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignItems: 'center',
+  inputGroup: {
     marginBottom: 12,
   },
-  simulatePayBtnText: {
-    color: COLORS.background,
+  inputLabel: {
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  inputField: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    color: '#1F2937',
     fontSize: 13,
-    fontWeight: 'bold',
   },
-  paymentFooterNote: {
-    color: COLORS.textMuted,
-    fontSize: 10,
-    fontStyle: 'italic',
-    textAlign: 'center',
+  deliveryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  successContainer: {
+  deliveryBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    paddingVertical: 10,
+    borderRadius: 8,
     alignItems: 'center',
-    paddingVertical: 20,
+    marginHorizontal: 4,
+    backgroundColor: '#FFFFFF',
   },
-  successHeading: {
+  deliveryBtnActive: {
+    borderColor: COLORS.primary,
+    backgroundColor: '#F0FDF4',
+  },
+  deliveryBtnText: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  deliveryBtnTextActive: {
     color: COLORS.primary,
-    fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '800',
+  },
+  billSummaryCard: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    marginVertical: 14,
+  },
+  billTitle: {
+    color: '#1F2937',
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  billRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  billLbl: {
+    color: '#6B7280',
+    fontSize: 12,
+  },
+  billVal: {
+    color: '#1F2937',
+    fontSize: 12,
+  },
+  billDivider: {
+    height: 1,
+    backgroundColor: '#E5E7EB',
+    marginVertical: 6,
+  },
+  billTotalLbl: {
+    color: '#1F2937',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  billTotalVal: {
+    color: '#000000',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  proceedPaymentBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 20,
+  },
+  proceedPaymentText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  paymentBox: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  paymentHeading: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  paymentSub: {
+    color: '#6B7280',
+    fontSize: 12,
+    marginTop: 4,
     textAlign: 'center',
+  },
+  paymentDetails: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    padding: 14,
+    width: '100%',
+    marginVertical: 20,
+  },
+  payInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 4,
+  },
+  payInfoLbl: {
+    color: '#6B7280',
+    fontSize: 12,
+  },
+  payInfoVal: {
+    color: '#1F2937',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  payInfoTotal: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  simPayBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 8,
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  simPayBtnText: {
+    color: '#1F2937',
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  successBox: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  successTitle: {
+    color: COLORS.primary,
+    fontSize: 20,
+    fontWeight: '800',
   },
   successSub: {
-    color: COLORS.textMuted,
-    fontSize: 13,
-    textAlign: 'center',
-    marginTop: 8,
-    lineHeight: 18,
-  },
-  otpCard: {
-    backgroundColor: COLORS.cardBackground,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    marginVertical: 24,
-    width: '100%',
-  },
-  otpLabel: {
-    color: COLORS.textMuted,
+    color: '#6B7280',
     fontSize: 12,
-    letterSpacing: 1.5,
-    fontWeight: 'bold',
-  },
-  otpValue: {
-    color: COLORS.accent,
-    fontSize: 48,
-    fontWeight: '900',
-    marginVertical: 10,
-    letterSpacing: 6,
-  },
-  otpHelper: {
-    color: COLORS.text,
-    fontSize: 11,
     textAlign: 'center',
     marginTop: 4,
   },
-  doneBtn: {
-    backgroundColor: COLORS.primary,
+  otpCard: {
+    backgroundColor: '#F9FAFB',
+    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    marginVertical: 20,
     width: '100%',
-    paddingVertical: 14,
+  },
+  otpLabel: {
+    color: '#6B7280',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  otpValue: {
+    color: '#D97706',
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: 4,
+    marginVertical: 6,
+  },
+  viewOrdersBtn: {
+    backgroundColor: COLORS.primary,
     borderRadius: 8,
+    paddingVertical: 12,
+    width: '100%',
     alignItems: 'center',
   },
-  doneBtnText: {
-    color: COLORS.background,
-    fontSize: 14,
-    fontWeight: 'bold',
+  viewOrdersText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    fontSize: 13,
   },
 });

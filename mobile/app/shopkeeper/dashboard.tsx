@@ -44,7 +44,6 @@ export default function ShopkeeperDashboard() {
       if (response.ok && data.success) {
         setShopkeepersList(data.data);
         if (data.data.length > 0 && !shopkeeperId) {
-          // Default to the first registered shopkeeper
           setShopkeeperId(data.data[0].id);
         }
       }
@@ -76,6 +75,9 @@ export default function ShopkeeperDashboard() {
       if (metricsResp.ok && metricsData.success) {
         setMetrics(metricsData.data);
       }
+
+      // Fetch list for switcher config
+      await fetchShopkeepers();
     } catch (err) {
       console.error(err);
       Alert.alert('Connection Error', 'Could not load store metrics. Verify backend server is live.');
@@ -96,9 +98,9 @@ export default function ShopkeeperDashboard() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.loadingContainer, { backgroundColor: COLORS.bgDark }]}>
         <ActivityIndicator color={COLORS.primary} size="large" />
-        <Text style={styles.loadingText}>Loading dashboard analytics...</Text>
+        <Text style={styles.loadingText}>Loading dashboard metrics...</Text>
       </View>
     );
   }
@@ -106,7 +108,7 @@ export default function ShopkeeperDashboard() {
   // Fallback: If no shopkeepers exist in the system database
   if (!shopkeeperId && shopkeepersList.length === 0) {
     return (
-      <View style={styles.noShopContainer}>
+      <View style={[styles.noShopContainer, { backgroundColor: COLORS.bgDark }]}>
         <Text style={styles.noShopEmoji}>🏪</Text>
         <Text style={styles.noShopTitle}>No Kirana Store Found</Text>
         <Text style={styles.noShopSubtitle}>Please onboard your store to access the seller dashboard.</Text>
@@ -125,12 +127,12 @@ export default function ShopkeeperDashboard() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[styles.container, { backgroundColor: COLORS.bgDark }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={COLORS.primary} />}
     >
       {/* Header Banner */}
-      <View style={styles.header}>
-        <Text style={styles.logoText}>🏪 GrahakBook Seller</Text>
+      <View style={[styles.header, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
+        <Text style={styles.logoText}>🏪 GrahakBook Seller Cockpit</Text>
         <Text style={styles.shopTitle}>{shopProfile?.shopName || 'Kirana Store'}</Text>
         <Text style={styles.shopOwner}>Owner: {shopProfile?.ownerName || 'Merchant'}</Text>
         <Text style={styles.shopAddress}>{shopProfile?.address}, {shopProfile?.city}</Text>
@@ -139,12 +141,16 @@ export default function ShopkeeperDashboard() {
       {/* Switch Shop Dev selector if there are multiple shops */}
       {shopkeepersList.length > 1 && (
         <View style={styles.switchShopCard}>
-          <Text style={styles.switchShopLabel}>Switch Active Store (Dev Selector):</Text>
+          <Text style={styles.switchShopLabel}>Switch Active Store (Dev Mode):</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.switchRow}>
             {shopkeepersList.map((shop) => (
               <TouchableOpacity
                 key={shop.id}
-                style={[styles.switchOption, shop.id === shopkeeperId && styles.switchOptionActive]}
+                style={[
+                  styles.switchOption, 
+                  { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark },
+                  shop.id === shopkeeperId && styles.switchOptionActive
+                ]}
                 onPress={() => setShopkeeperId(shop.id)}
               >
                 <Text style={[styles.switchOptionText, shop.id === shopkeeperId && styles.switchOptionTextActive]}>
@@ -166,46 +172,46 @@ export default function ShopkeeperDashboard() {
           })}
         >
           <Text style={styles.activeOrdersAlertText}>
-            🔔 You have {metrics.activeOrdersCount} incoming active orders! Click to view.
+            🔔 You have {metrics.activeOrdersCount} pending active orders! Tap to fulfill.
           </Text>
         </TouchableOpacity>
       )}
 
       {/* Today's Sales summary cards */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Today's Summary</Text>
+        <Text style={styles.sectionTitle}>Today's Overview</Text>
       </View>
       <View style={styles.statsRow}>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
           <Text style={styles.statVal}>{metrics.todayOrdersCount}</Text>
-          <Text style={styles.statLbl}>Orders Dispatched</Text>
+          <Text style={styles.statLbl}>Dispatches</Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[styles.statCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
           <Text style={[styles.statVal, { color: COLORS.accent }]}>₹{metrics.todayEarnings.toFixed(2)}</Text>
-          <Text style={styles.statLbl}>Today's Earnings</Text>
+          <Text style={styles.statLbl}>Sales</Text>
         </View>
       </View>
 
       {/* All Time Performance Analytics */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>All-Time Analytics</Text>
+        <Text style={styles.sectionTitle}>Store Performance Metrics</Text>
       </View>
-      <View style={styles.analyticsCard}>
+      <View style={[styles.analyticsCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
         <View style={styles.analyticRow}>
-          <Text style={styles.analyticLabel}>Total Earnings Settle</Text>
-          <Text style={styles.analyticValue}>₹{metrics.totalEarnings.toFixed(2)}</Text>
+          <Text style={styles.analyticLabel}>Total Settle Volume</Text>
+          <Text style={[styles.analyticValue, { color: COLORS.primary }]}>₹{metrics.totalEarnings.toFixed(2)}</Text>
         </View>
-        <View style={styles.analyticDivider} />
+        <View style={[styles.analyticDivider, { backgroundColor: COLORS.borderDark }]} />
         <View style={styles.analyticRow}>
-          <Text style={styles.analyticLabel}>Completed Deliveries</Text>
-          <Text style={styles.analyticValue}>{metrics.completedOrdersCount}</Text>
+          <Text style={styles.analyticLabel}>Completed Delivery Count</Text>
+          <Text style={[styles.analyticValue, { color: '#F3F4F6' }]}>{metrics.completedOrdersCount}</Text>
         </View>
-        <View style={styles.analyticDivider} />
+        <View style={[styles.analyticDivider, { backgroundColor: COLORS.borderDark }]} />
         <View style={styles.analyticRow}>
           <Text style={styles.analyticLabel}>Average Customer Rating</Text>
           <View style={styles.ratingBox}>
             <Text style={styles.ratingText}>⭐ {metrics.averageRating.toFixed(1)}</Text>
-            <Text style={styles.ratingCount}>({metrics.totalReviews} reviews)</Text>
+            <Text style={styles.ratingCount}>({metrics.totalReviews} local feedback)</Text>
           </View>
         </View>
       </View>
@@ -219,17 +225,17 @@ export default function ShopkeeperDashboard() {
             params: { shopkeeperId }
           })}
         >
-          <Text style={styles.actionBtnText}>📦 Dispatch & Orders Manager</Text>
+          <Text style={styles.actionBtnText}>📦 incoming orders dispatch manager</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.actionBtn, { backgroundColor: COLORS.cardBackground, borderWidth: 1, borderColor: COLORS.border }]}
+          style={[styles.actionBtn, { backgroundColor: COLORS.cardDark, borderWidth: 1, borderColor: COLORS.borderDark }]}
           onPress={() => router.push({
             pathname: '/shopkeeper/catalog',
             params: { shopkeeperId }
           })}
         >
-          <Text style={[styles.actionBtnText, { color: COLORS.text }]}>📚 Inventory Catalog Manager</Text>
+          <Text style={[styles.actionBtnText, { color: '#F3F4F6' }]}>📚 catalog inventory manager</Text>
         </TouchableOpacity>
       </View>
 
@@ -238,7 +244,7 @@ export default function ShopkeeperDashboard() {
         style={styles.backBtn}
         onPress={() => router.replace('/')}
       >
-        <Text style={styles.backBtnText}>Log Out / Main Menu</Text>
+        <Text style={styles.backBtnText}>Exit Cockpit</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -247,23 +253,20 @@ export default function ShopkeeperDashboard() {
 const styles = StyleSheet.create({
   container: {
     padding: 24,
-    backgroundColor: COLORS.background,
     flexGrow: 1,
   },
   loadingContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     marginTop: 12,
     fontSize: 14,
   },
   noShopContainer: {
     flex: 1,
-    backgroundColor: COLORS.background,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 30,
@@ -273,12 +276,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   noShopTitle: {
-    color: COLORS.text,
+    color: '#FFFFFF',
     fontSize: 22,
     fontWeight: 'bold',
   },
   noShopSubtitle: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 13,
     textAlign: 'center',
     marginTop: 8,
@@ -295,13 +298,13 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   onboardBtnText: {
-    color: COLORS.background,
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: 'bold',
   },
   exitBtn: {
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: '#2D2D34',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -309,46 +312,44 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   exitBtnText: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 14,
   },
   header: {
-    backgroundColor: COLORS.cardBackground,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
     padding: 20,
     marginTop: 20,
     marginBottom: 20,
   },
   logoText: {
     color: COLORS.primary,
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   shopTitle: {
     fontSize: 22,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontWeight: '800',
+    color: '#FFFFFF',
     marginTop: 6,
   },
   shopOwner: {
     fontSize: 13,
-    color: COLORS.text,
+    color: '#F3F4F6',
     marginTop: 4,
   },
   shopAddress: {
     fontSize: 11,
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     marginTop: 4,
   },
   switchShopCard: {
     marginBottom: 20,
   },
   switchShopLabel: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
     fontWeight: '600',
     marginBottom: 8,
@@ -357,9 +358,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   switchOption: {
-    backgroundColor: COLORS.cardBackground,
     borderWidth: 1,
-    borderColor: COLORS.border,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -367,10 +366,10 @@ const styles = StyleSheet.create({
   },
   switchOptionActive: {
     borderColor: COLORS.primary,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    backgroundColor: 'rgba(12, 131, 31, 0.15)',
   },
   switchOptionText: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 12,
   },
   switchOptionTextActive: {
@@ -387,7 +386,7 @@ const styles = StyleSheet.create({
   },
   activeOrdersAlertText: {
     color: COLORS.accent,
-    fontWeight: 'bold',
+    fontWeight: '800',
     fontSize: 12,
     textAlign: 'center',
   },
@@ -396,8 +395,8 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.text,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   statsRow: {
     flexDirection: 'row',
@@ -405,9 +404,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   statCard: {
-    backgroundColor: COLORS.cardBackground,
     borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: 12,
     padding: 16,
     width: '48%',
@@ -415,18 +412,16 @@ const styles = StyleSheet.create({
   },
   statVal: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: COLORS.primary,
   },
   statLbl: {
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     marginTop: 4,
   },
   analyticsCard: {
-    backgroundColor: COLORS.cardBackground,
     borderWidth: 1,
-    borderColor: COLORS.border,
     borderRadius: 16,
     padding: 18,
     marginBottom: 24,
@@ -438,17 +433,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   analyticLabel: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 13,
   },
   analyticValue: {
-    color: COLORS.text,
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   analyticDivider: {
     height: 1,
-    backgroundColor: COLORS.border,
     marginVertical: 4,
   },
   ratingBox: {
@@ -461,7 +454,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   ratingCount: {
-    color: COLORS.textMuted,
+    color: '#9CA3AF',
     fontSize: 11,
     marginLeft: 4,
   },
@@ -475,21 +468,22 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionBtnText: {
-    color: COLORS.background,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontWeight: '800',
     fontSize: 14,
+    textTransform: 'uppercase',
   },
   backBtn: {
-    borderColor: COLORS.error,
-    borderWidth: 1,
+    borderColor: '#EF4444',
+    borderWidth: 1.5,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
     marginBottom: 30,
   },
   backBtnText: {
-    color: COLORS.error,
-    fontWeight: 'bold',
+    color: '#EF4444',
+    fontWeight: '800',
     fontSize: 13,
   },
 });

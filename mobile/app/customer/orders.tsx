@@ -52,27 +52,25 @@ export default function CustomerOrders() {
     fetchOrders(false);
   };
 
-  // Helper to get status color
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'RECEIVED':
-        return { bg: '#374151', text: '#9CA3AF' }; // Gray
+        return { bg: '#F3F4F6', text: '#4B5563', border: '#E5E7EB' }; // Soft Gray
       case 'ACCEPTED':
-        return { bg: 'rgba(59, 130, 246, 0.15)', text: '#3B82F6' }; // Blue
+        return { bg: '#EBF5FF', text: '#2563EB', border: '#BFDBFE' }; // Blue
       case 'PREPARING':
-        return { bg: 'rgba(245, 158, 11, 0.15)', text: '#F59E0B' }; // Orange/Yellow
+        return { bg: '#FFFBEB', text: '#D97706', border: '#FEF3C7' }; // Yellow
       case 'READY':
-        return { bg: 'rgba(236, 72, 153, 0.15)', text: '#EC4899' }; // Pink
+        return { bg: '#FDF2F8', text: '#DB2777', border: '#FBCFE8' }; // Pink
       case 'COMPLETED':
-        return { bg: 'rgba(16, 185, 129, 0.15)', text: '#10B981' }; // Green
+        return { bg: '#ECFDF5', text: '#0C831F', border: '#A7F3D0' }; // Green
       case 'CANCELLED':
-        return { bg: 'rgba(239, 68, 68, 0.15)', text: '#EF4444' }; // Red
+        return { bg: '#FEF2F2', text: '#DC2626', border: '#FECACA' }; // Red
       default:
-        return { bg: '#2D2D34', text: '#F3F4F6' };
+        return { bg: '#F9FAFB', text: '#1F2937', border: '#E5E7EB' };
     }
   };
 
-  // Trigger manual WhatsApp contact message
   const handleContactMerchant = (phone: string, shopName: string, orderId: string) => {
     const text = `Hello ${shopName}, I'm checking in on my GrahakBook Order #${orderId.substring(0, 8)}. Please let me know the status!`;
     let formattedPhone = phone;
@@ -96,13 +94,13 @@ export default function CustomerOrders() {
 
   return (
     <View style={styles.wrapper}>
-      {/* Top Banner Header */}
+      {/* Header (Vibrant Yellow Banner) */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backText}>◀ Shop Detail</Text>
+          <Text style={styles.backText}>◀ Shop profile</Text>
         </TouchableOpacity>
         <Text style={styles.title}>📋 My Order History</Text>
-        <Text style={styles.subtitle}>Logged in as: {customerName || 'Guest'}</Text>
+        <Text style={styles.subtitle}>Account: {customerName || 'Guest Customer'}</Text>
       </View>
 
       <ScrollView
@@ -112,7 +110,7 @@ export default function CustomerOrders() {
         {orders.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>You haven't placed any orders yet!</Text>
-            <Text style={styles.emptySubText}>Browse items and check out to see your orders here.</Text>
+            <Text style={styles.emptySubText}>Select items from nearby shops and complete checkout to see them here.</Text>
           </View>
         ) : (
           orders.map((order) => {
@@ -121,25 +119,25 @@ export default function CustomerOrders() {
 
             return (
               <View key={order.id} style={styles.orderCard}>
-                {/* Header: Shop & Status */}
+                {/* Shop & Status header */}
                 <View style={styles.orderCardHeader}>
-                  <View>
+                  <View style={{ flex: 1 }}>
                     <Text style={styles.shopName}>🏪 {order.shopkeeper.shopName}</Text>
                     <Text style={styles.orderDate}>
-                      {new Date(order.createdAt).toLocaleDateString('en-IN')} at{' '}
+                      Ordered on {new Date(order.createdAt).toLocaleDateString('en-IN')} at{' '}
                       {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg, borderColor: statusStyle.border }]}>
                     <Text style={[styles.statusText, { color: statusStyle.text }]}>{order.status}</Text>
                   </View>
                 </View>
 
-                {/* Items Summary list */}
+                {/* Items summary */}
                 <View style={styles.itemsSection}>
                   {order.items.map((item: any) => (
                     <View key={item.id} style={styles.itemRow}>
-                      <Text style={styles.itemQtyName}>
+                      <Text style={styles.itemDetail}>
                         {item.quantity} x {item.product.name}
                       </Text>
                       <Text style={styles.itemPrice}>₹{(item.quantity * parseFloat(item.price)).toFixed(2)}</Text>
@@ -149,26 +147,26 @@ export default function CustomerOrders() {
 
                 <View style={styles.divider} />
 
-                {/* Total & Handoff Type */}
+                {/* Totals info */}
                 <View style={styles.totalsRow}>
-                  <Text style={styles.deliveryText}>
+                  <Text style={styles.deliveryMethod}>
                     Handoff: {order.deliveryType === 'SELF_PICKUP' ? '🚶 Self Pickup' : '🏠 Home Delivery'}
                   </Text>
-                  <Text style={styles.totalAmount}>Total: ₹{parseFloat(order.totalAmount).toFixed(2)}</Text>
+                  <Text style={styles.totalAmount}>Total Paid: ₹{parseFloat(order.totalAmount).toFixed(2)}</Text>
                 </View>
 
-                {/* Secure Handoff OTP display */}
+                {/* Verification OTP for secure handoff */}
                 {showOTP && (
-                  <View style={styles.otpSection}>
-                    <Text style={styles.otpLabel}>Verification OTP for Storeowner</Text>
+                  <View style={styles.otpCard}>
+                    <Text style={styles.otpLabel}>Verification OTP for Shopowner</Text>
                     <Text style={styles.otpValue}>{order.otpCode || '1789'}</Text>
                     <Text style={styles.otpHelp}>
-                      Present this secure OTP to the shopkeeper upon receiving the items.
+                      Show this 4-digit verification code to the merchant upon delivery/pickup.
                     </Text>
                   </View>
                 )}
 
-                {/* Actions */}
+                {/* Contact merchant button */}
                 <View style={styles.cardActions}>
                   <TouchableOpacity
                     style={styles.contactBtn}
@@ -180,7 +178,7 @@ export default function CustomerOrders() {
                       )
                     }
                   >
-                    <Text style={styles.contactBtnText}>💬 WhatsApp Support</Text>
+                    <Text style={styles.contactBtnText}>💬 Message Store via WhatsApp</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -200,27 +198,33 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 24,
     paddingTop: 45,
-    paddingBottom: 16,
-    backgroundColor: COLORS.cardBackground,
-    borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    paddingBottom: 18,
+    backgroundColor: COLORS.accent, // Yellow Header
+    borderBottomLeftRadius: 18,
+    borderBottomRightRadius: 18,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
   backBtn: {
     marginBottom: 8,
   },
   backText: {
-    color: COLORS.primary,
+    color: '#1F2937',
     fontWeight: 'bold',
     fontSize: 14,
   },
   title: {
-    color: COLORS.text,
+    color: '#1F2937',
     fontSize: 22,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   subtitle: {
-    color: COLORS.textMuted,
-    fontSize: 13,
+    color: '#4B5563',
+    fontSize: 12,
+    fontWeight: '600',
     marginTop: 2,
   },
   container: {
@@ -235,8 +239,8 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     color: COLORS.textMuted,
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: 10,
+    fontSize: 13,
   },
   emptyCard: {
     backgroundColor: COLORS.cardBackground,
@@ -246,6 +250,7 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     alignItems: 'center',
     marginTop: 40,
+    elevation: 1,
   },
   emptyText: {
     color: COLORS.text,
@@ -258,6 +263,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: 8,
+    lineHeight: 16,
   },
   orderCard: {
     backgroundColor: COLORS.cardBackground,
@@ -266,6 +272,11 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     padding: 16,
     marginBottom: 16,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
   },
   orderCardHeader: {
     flexDirection: 'row',
@@ -276,7 +287,7 @@ const styles = StyleSheet.create({
   shopName: {
     color: COLORS.text,
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   orderDate: {
     color: COLORS.textMuted,
@@ -284,25 +295,27 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   statusBadge: {
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    borderWidth: 1,
     borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 8,
   },
   statusText: {
-    fontSize: 11,
-    fontWeight: 'bold',
+    fontSize: 10,
+    fontWeight: '800',
   },
   itemsSection: {
-    marginBottom: 10,
+    marginBottom: 8,
   },
   itemRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginVertical: 3,
   },
-  itemQtyName: {
+  itemDetail: {
     color: COLORS.text,
     fontSize: 13,
+    fontWeight: '500',
   },
   itemPrice: {
     color: COLORS.textMuted,
@@ -318,40 +331,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  deliveryText: {
+  deliveryMethod: {
     color: COLORS.textMuted,
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   totalAmount: {
-    color: COLORS.accent,
+    color: '#000000',
     fontSize: 15,
-    fontWeight: 'bold',
+    fontWeight: '900',
   },
-  otpSection: {
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
+  otpCard: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#FEF3C7',
     borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: 14,
+    borderRadius: 12,
+    padding: 12,
     alignItems: 'center',
     marginTop: 14,
   },
   otpLabel: {
-    color: COLORS.textMuted,
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: '#D97706',
+    fontSize: 9,
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   otpValue: {
-    color: COLORS.accent,
+    color: '#D97706',
     fontSize: 26,
     fontWeight: '900',
-    marginVertical: 4,
     letterSpacing: 4,
+    marginVertical: 4,
   },
   otpHelp: {
-    color: COLORS.text,
+    color: '#6B7280',
     fontSize: 10,
     textAlign: 'center',
   },
@@ -361,15 +374,16 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   contactBtn: {
-    borderWidth: 1,
     borderColor: COLORS.primary,
+    borderWidth: 1.5,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 6,
+    backgroundColor: '#FFFFFF',
   },
   contactBtnText: {
     color: COLORS.primary,
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
 });

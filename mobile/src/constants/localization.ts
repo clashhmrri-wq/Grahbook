@@ -44,14 +44,20 @@ export const LOCALIZATION = {
 };
 
 export const COLORS = {
-  primary: "#10B981", // Sleek vibrant Emerald green representing trust & growth
-  primaryDark: "#059669",
-  background: "#121214", // Deep rich dark mode background
-  cardBackground: "#1E1E24", // Premium elevated card surface
-  text: "#F3F4F6", // High-contrast clean white
-  textMuted: "#9CA3AF", // Soft gray
-  border: "#2D2D34", // Muted borders
-  error: "#EF4444", // Bright status red
-  success: "#10B981",
-  accent: "#F59E0B", // Indian saffron/yellow accent for highlights
+  primary: "#0C831F",       // Fresh Organic Green (Blinkit action color)
+  primaryDark: "#0A6C1A",
+  background: "#F4F6F8",    // Clean, light, fresh backdrop
+  cardBackground: "#FFFFFF",// Pure white elevated card surfaces
+  text: "#1F2937",          // Charcoal grey high-contrast body text
+  textMuted: "#6B7280",     // Muted gray subtext
+  border: "#E5E7EB",        // Very clean, thin divider borders
+  error: "#EF4444",         // Urgent alert red
+  success: "#0C831F",       // Completed success green
+  accent: "#FCDB3A",        // High-energy Blinkit Yellow accent
+  
+  // Custom Merchant Dark Palette (optional styling fallback)
+  bgDark: "#121214",
+  cardDark: "#1E1E24",
+  borderDark: "#2D2D34",
+  textDarkBg: "#F3F4F6",
 };
