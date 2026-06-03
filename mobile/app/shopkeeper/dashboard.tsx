@@ -8,8 +8,11 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import { COLORS } from '../../src/constants/localization';
 import { API_ROUTES } from '../../src/config/api';
 
@@ -21,6 +24,11 @@ export default function ShopkeeperDashboard() {
   const [shopkeeperId, setShopkeeperId] = useState<string>((params.shopkeeperId || params.id) as string || '');
   const [shopkeepersList, setShopkeepersList] = useState<any[]>([]);
   const [shopProfile, setShopProfile] = useState<any>(null);
+
+  // SaaS and ONDC Modal states
+  const [ondcModalVisible, setOndcModalVisible] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   
   // Dashboard Metrics
   const [metrics, setMetrics] = useState({
@@ -86,6 +94,114 @@ export default function ShopkeeperDashboard() {
       setRefreshing(false);
     }
   };
+
+  // Trigger SaaS plan upgrade billing via Razorpay hosted checkout
+  const handleUpgradePlan = async () => {
+    setSubscribing(true);
+    try {
+      const response = await fetch(API_ROUTES.createSaaSSubscription, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shopkeeperId,
+          plan: 'PREMIUM',
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        const { razorpaySubscriptionId, razorpayKeyId } = data;
+        
+        // Build hosted Razorpay checkout redirect deep link
+        const redirectUrl = Linking.createURL('/shopkeeper/dashboard', {
+          queryParams: { shopkeeperId }
+        });
+        
+        const hostedCheckoutUrl = `https://api.razorpay.com/v1/checkout/hosted?subscription_id=${razorpaySubscriptionId}&key_id=${razorpayKeyId}&redirect_url=${encodeURIComponent(redirectUrl)}`;
+        
+        // Launch in-app secure browser page
+        await WebBrowser.openBrowserAsync(hostedCheckoutUrl);
+      } else {
+        Alert.alert('Subscription Error', data.message || 'Unable to initialize subscription.');
+      }
+    } catch (error) {
+      console.error('Error upgrading subscription:', error);
+      Alert.alert('Server Error', 'Failed to connect to subscription billing gateway.');
+    } finally {
+      setSubscribing(false);
+    }
+  };
+
+  // Publish inventory catalog payload to ONDC network
+  const handlePublishToOndc = async () => {
+    setPublishing(true);
+    try {
+      const response = await fetch(API_ROUTES.publishToOndc(shopkeeperId), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        Alert.alert('ONDC Live ✓', 'Your shop catalog has been cryptographically signed and registered with ONDC gateways!');
+        setOndcModalVisible(false);
+        await loadDashboardData(false);
+      } else {
+        Alert.alert('ONDC Error', data.message || 'Failed to sync catalog with ONDC network.');
+      }
+    } catch (error) {
+      console.error('ONDC Sync Error:', error);
+      Alert.alert('Server Error', 'Could not connect to ONDC distribution gateway.');
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  // Verify subscription if redirected with Razorpay parameters
+  useEffect(() => {
+    const checkSubscriptionVerification = async () => {
+      const rPayPaymentId = (params.razorpay_payment_id || params.razorpayPaymentId) as string;
+      const rPaySubId = (params.razorpay_subscription_id || params.razorpaySubscriptionId) as string;
+      const rPaySig = (params.razorpay_signature || params.razorpaySignature) as string;
+
+      if (rPayPaymentId && rPaySubId && rPaySig) {
+        setLoading(true);
+        try {
+          const response = await fetch(API_ROUTES.verifySaaSSubscription, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              shopkeeperId,
+              razorpaySubscriptionId: rPaySubId,
+              razorpayPaymentId: rPayPaymentId,
+              razorpaySignature: rPaySig,
+            }),
+          });
+          const data = await response.json();
+          if (response.ok && data.success) {
+            Alert.alert(
+              'Premium Active! 🌟',
+              'Thank you! Your account has been upgraded to PREMIUM plan. ONDC network is now unlocked.'
+            );
+            // Clear URL search params by replacing the route without them
+            router.replace({
+              pathname: '/shopkeeper/dashboard',
+              params: { shopkeeperId }
+            });
+          } else {
+            Alert.alert('Verification Failed', data.message || 'Could not verify SaaS subscription payment.');
+          }
+        } catch (error) {
+          console.error('Verification error:', error);
+          Alert.alert('Server Error', 'Could not verify transaction signature with backend.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    if (shopkeeperId) {
+      checkSubscriptionVerification();
+    }
+  }, [params, shopkeeperId]);
 
   useEffect(() => {
     loadDashboardData();
@@ -177,6 +293,79 @@ export default function ShopkeeperDashboard() {
         </TouchableOpacity>
       )}
 
+      {/* SaaS Subscription & ONDC Integration Section */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>SaaS Billing & Integrations</Text>
+      </View>
+      <View style={styles.integrationRow}>
+        {/* SaaS Subscription Status Card */}
+        <View style={[styles.integrationCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.integrationIcon}>💳</Text>
+            <View style={styles.badgeRow}>
+              <View style={[
+                styles.planBadge, 
+                shopProfile?.saasPlan === 'PREMIUM' ? styles.premiumBadge : styles.basicBadge
+              ]}>
+                <Text style={styles.badgeText}>{shopProfile?.saasPlan || 'BASIC'}</Text>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.integrationCardTitle}>SaaS Subscription</Text>
+          <Text style={styles.integrationCardSub}>
+            Status: <Text style={{ color: shopProfile?.saasStatus === 'ACTIVE' ? COLORS.primary : '#3B82F6', fontWeight: 'bold' }}>{shopProfile?.saasStatus || 'TRIAL'}</Text>
+          </Text>
+          <Text style={styles.expiryText}>
+            {shopProfile?.saasExpiresAt 
+              ? `Expires: ${new Date(shopProfile.saasExpiresAt).toLocaleDateString()}` 
+              : 'Trial: 30 days active'}
+          </Text>
+          
+          {shopProfile?.saasPlan !== 'PREMIUM' && (
+            <TouchableOpacity 
+              style={styles.upgradeBtn} 
+              onPress={handleUpgradePlan}
+              disabled={subscribing}
+            >
+              {subscribing ? (
+                <ActivityIndicator color="#000000" size="small" />
+              ) : (
+                <Text style={styles.upgradeBtnText}>⭐ Upgrade Plan</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* ONDC Integration Status Card */}
+        <View style={[styles.integrationCard, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark }]}>
+          <View style={styles.cardHeaderRow}>
+            <Text style={styles.integrationIcon}>🌐</Text>
+            <View style={styles.badgeRow}>
+              <View style={[
+                styles.planBadge, 
+                shopProfile?.isOndcEnabled ? styles.activeOndcBadge : styles.offlineOndcBadge
+              ]}>
+                <Text style={styles.badgeText}>
+                  {shopProfile?.isOndcEnabled ? 'Active' : 'Offline'}
+                </Text>
+              </View>
+            </View>
+          </View>
+          <Text style={styles.integrationCardTitle}>ONDC Registry</Text>
+          <Text style={styles.integrationCardSub}>
+            Open Network for Digital Commerce registry status.
+          </Text>
+          <TouchableOpacity 
+            style={[styles.publishOndcBtn, shopProfile?.isOndcEnabled && styles.publishedOndcBtn]} 
+            onPress={() => setOndcModalVisible(true)}
+          >
+            <Text style={[styles.publishOndcBtnText, shopProfile?.isOndcEnabled && styles.publishedOndcBtnText]}>
+              {shopProfile?.isOndcEnabled ? '✓ Registry Synced' : 'Sync to ONDC'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* Today's Sales summary cards */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Today's Overview</Text>
@@ -246,6 +435,66 @@ export default function ShopkeeperDashboard() {
       >
         <Text style={styles.backBtnText}>Exit Cockpit</Text>
       </TouchableOpacity>
+
+      {/* ONDC Modal */}
+      <Modal visible={ondcModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: COLORS.cardDark, borderColor: COLORS.borderDark, borderWidth: 1 }]}>
+            {shopProfile?.saasPlan !== 'PREMIUM' ? (
+              // Case 1: Needs premium upgrade
+              <View>
+                <Text style={styles.modalEmoji}>⭐</Text>
+                <Text style={[styles.modalTitle, { color: '#FFFFFF', textAlign: 'center' }]}>Premium Upgrade Required</Text>
+                <Text style={styles.modalDescription}>
+                  Syncing your store catalog to the ONDC open registry is a premium feature. Upgrade your SaaS tier to list products on open network commerce apps (like Paytm, pincode, etc.).
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: COLORS.accent, marginTop: 10 }]}
+                  onPress={() => {
+                    setOndcModalVisible(false);
+                    handleUpgradePlan();
+                  }}
+                >
+                  <Text style={[styles.actionBtnText, { color: '#000000' }]}>Upgrade to Premium (₹799)</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.exitBtn, { marginTop: 10 }]} 
+                  onPress={() => setOndcModalVisible(false)}
+                >
+                  <Text style={styles.exitBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              // Case 2: Premium active, can publish
+              <View>
+                <Text style={styles.modalEmoji}>🌐</Text>
+                <Text style={[styles.modalTitle, { color: '#FFFFFF', textAlign: 'center' }]}>Publish to ONDC Network</Text>
+                <Text style={styles.modalDescription}>
+                  This will register your catalog on the Open Network for Digital Commerce (ONDC) registry. We will sign the payload using HMAC-SHA256 protocol keys.
+                </Text>
+                <TouchableOpacity 
+                  style={[styles.actionBtn, { backgroundColor: COLORS.primary, marginTop: 10 }]}
+                  onPress={handlePublishToOndc}
+                  disabled={publishing}
+                >
+                  {publishing ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.actionBtnText}>Confirm & Publish Catalog</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.exitBtn, { marginTop: 10 }]} 
+                  onPress={() => setOndcModalVisible(false)}
+                  disabled={publishing}
+                >
+                  <Text style={styles.exitBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -485,5 +734,132 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontWeight: '800',
     fontSize: 13,
+  },
+  integrationRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 24,
+  },
+  integrationCard: {
+    borderWidth: 1,
+    borderRadius: 16,
+    padding: 14,
+    width: '48%',
+    justifyContent: 'space-between',
+    minHeight: 190,
+  },
+  cardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  integrationIcon: {
+    fontSize: 24,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+  },
+  planBadge: {
+    borderRadius: 6,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  premiumBadge: {
+    backgroundColor: COLORS.accent,
+  },
+  basicBadge: {
+    backgroundColor: '#6B7280',
+  },
+  activeOndcBadge: {
+    backgroundColor: COLORS.primary,
+  },
+  offlineOndcBadge: {
+    backgroundColor: '#EF4444',
+  },
+  badgeText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  integrationCardTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  integrationCardSub: {
+    color: '#9CA3AF',
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  expiryText: {
+    color: '#6B7280',
+    fontSize: 10,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  upgradeBtn: {
+    backgroundColor: COLORS.accent,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  upgradeBtnText: {
+    color: '#000000',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  publishOndcBtn: {
+    backgroundColor: '#374151',
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#4B5563',
+  },
+  publishOndcBtnText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  publishedOndcBtn: {
+    backgroundColor: 'rgba(12, 131, 31, 0.15)',
+    borderColor: COLORS.primary,
+  },
+  publishedOndcBtnText: {
+    color: COLORS.primary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalContent: {
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    elevation: 8,
+  },
+  modalEmoji: {
+    fontSize: 48,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    marginBottom: 8,
+  },
+  modalDescription: {
+    color: '#9CA3AF',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginVertical: 16,
   },
 });

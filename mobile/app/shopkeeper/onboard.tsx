@@ -9,18 +9,22 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { LOCALIZATION, COLORS } from '../../src/constants/localization';
 import { API_ROUTES } from '../../src/config/api';
 
 export default function ShopkeeperOnboard() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+
+  const initialOwnerName = (params.ownerName as string) || '';
+  const initialPhoneNumber = (params.phoneNumber as string) || '';
 
   // Form states
-  const [ownerName, setOwnerName] = useState('');
+  const [ownerName, setOwnerName] = useState(initialOwnerName);
   const [shopName, setShopName] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber);
   const [pinCode, setPinCode] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
@@ -161,11 +165,12 @@ export default function ShopkeeperOnboard() {
         {/* Owner Name Input */}
         <Text style={styles.label}>{LOCALIZATION.ownerNameLabel}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, initialOwnerName ? styles.lockedInput : null]}
           placeholder={LOCALIZATION.ownerNamePlaceholder}
           placeholderTextColor={COLORS.textMuted}
           value={ownerName}
           onChangeText={setOwnerName}
+          editable={!initialOwnerName}
         />
 
         {/* Shop Name Input */}
@@ -181,12 +186,13 @@ export default function ShopkeeperOnboard() {
         {/* WhatsApp Mobile Phone Input */}
         <Text style={styles.label}>{LOCALIZATION.phoneLabel}</Text>
         <TextInput
-          style={styles.input}
+          style={[styles.input, initialPhoneNumber ? styles.lockedInput : null]}
           keyboardType="numeric"
           placeholder={LOCALIZATION.phonePlaceholder}
           placeholderTextColor={COLORS.textMuted}
           value={phoneNumber}
           onChangeText={setPhoneNumber}
+          editable={!initialPhoneNumber}
         />
         <Text style={styles.inputHelper}>{LOCALIZATION.phoneHelper}</Text>
 
@@ -325,6 +331,10 @@ const styles = StyleSheet.create({
     padding: 12,
     color: COLORS.text,
     fontSize: 14,
+  },
+  lockedInput: {
+    backgroundColor: '#E5E7EB',
+    color: '#6B7280',
   },
   textArea: {
     minHeight: 60,

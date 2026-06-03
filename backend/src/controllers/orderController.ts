@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import prisma from '../config/db';
+import { sendWhatsAppAlert } from '../config/whatsapp';
 
 // Validation schema for creating an order
 export const createOrderSchema = z.object({
@@ -34,13 +35,12 @@ export const completeOrderSchema = z.object({
 });
 
 /**
- * Create a new customer order with secure handoff OTP
+ * Create a new customer order with secure handoff OTP and WhatsApp notifications
  */
 export const createOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const { shopkeeperId, customerId, deliveryType, totalAmount, items } = req.body;
 
-    // Check if shopkeeper and customer exist
     const shop = await prisma.shopkeeper.findUnique({ where: { id: shopkeeperId } });
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
 
@@ -52,12 +52,9 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return;
     }
 
-    // Generate secure 4-digit handoff OTP
     const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
 
-    // Execute order creation in database transaction
     const newOrder = await prisma.$transaction(async (tx) => {
-      // 1. Create Order entry
       const order = await tx.order.create({
         data: {
           shopkeeperId,
@@ -69,7 +66,6 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
         },
       });
 
-      // 2. Create OrderItems
       await Promise.all(
         items.map((item: any) =>
           tx.orderItem.create({
@@ -86,10 +82,24 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
       return order;
     });
 
+    // 1. Alert customer order received
+    await sendWhatsAppAlert(
+      customer.phoneNumber,
+      'order_received_alert',
+      [customer.fullName, newOrder.id.substring(0, 8), shop.shopName, totalAmount.toString()]
+    );
+
+    // 2. Alert merchant order received
+    await sendWhatsAppAlert(
+      shop.phoneNumber,
+      'order_placed_alert',
+      [shop.ownerName, newOrder.id.substring(0, 8), totalAmount.toString(), customer.fullName]
+    );
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully',
-      otpCode: newOrder.otpCode, // Handoff OTP for verification
+      otpCode: newOrder.otpCode,
       data: newOrder,
     });
   } catch (error) {
@@ -102,7 +112,7 @@ export const createOrder = async (req: Request, res: Response): Promise<void> =>
 };
 
 /**
- * Get orders for a specific shopkeeper (active or history)
+ * Get orders for a specific shopkeeper
  */
 export const getShopkeeperOrders = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -116,7 +126,6 @@ export const getShopkeeperOrders = async (req: Request, res: Response): Promise<
       return;
     }
 
-    // Dynamic filters
     const filter: any = { shopkeeperId };
     if (status && typeof status === 'string') {
       filter.status = status;
@@ -129,6 +138,7 @@ export const getShopkeeperOrders = async (req: Request, res: Response): Promise<
           select: {
             fullName: true,
             phoneNumber: true,
+            address: true,
           },
         },
         items: {
@@ -209,14 +219,20 @@ export const getCustomerOrders = async (req: Request, res: Response): Promise<vo
 };
 
 /**
- * Update order preparation status (ACCEPTED, PREPARING, READY, CANCELLED)
+ * Update order preparation status with WhatsApp alerts to customer
  */
 export const updateOrderStatus = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { status } = req.body;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        shopkeeper: true,
+      },
+    });
 
     if (!order) {
       res.status(404).json({
@@ -230,6 +246,13 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
       where: { id },
       data: { status },
     });
+
+    // Alert customer of status update via Meta WhatsApp API
+    await sendWhatsAppAlert(
+      order.customer.phoneNumber,
+      'order_status_update',
+      [order.customer.fullName, order.id.substring(0, 8), status]
+    );
 
     res.status(200).json({
       success: true,
@@ -246,14 +269,20 @@ export const updateOrderStatus = async (req: Request, res: Response): Promise<vo
 };
 
 /**
- * Verify customer's 4-digit handoff OTP to mark order as COMPLETED
+ * Verify customer's 4-digit handoff OTP to mark order as COMPLETED with success alerts
  */
 export const completeOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { otpCode } = req.body;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        customer: true,
+        shopkeeper: true,
+      },
+    });
 
     if (!order) {
       res.status(404).json({
@@ -263,7 +292,6 @@ export const completeOrder = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Verify OTP matches
     if (order.otpCode !== otpCode) {
       res.status(400).json({
         success: false,
@@ -276,6 +304,13 @@ export const completeOrder = async (req: Request, res: Response): Promise<void> 
       where: { id },
       data: { status: 'COMPLETED' },
     });
+
+    // Alert customer of completion via Meta WhatsApp API
+    await sendWhatsAppAlert(
+      order.customer.phoneNumber,
+      'order_completed',
+      [order.customer.fullName, order.id.substring(0, 8), order.shopkeeper.shopName]
+    );
 
     res.status(200).json({
       success: true,

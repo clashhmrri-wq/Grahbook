@@ -20,6 +20,9 @@ export const API_ROUTES = {
   
   createPaymentOrder: `${API_BASE_URL}/api/payments/order`,
   verifyPayment: `${API_BASE_URL}/api/payments/verify`,
+  createSaaSSubscription: `${API_BASE_URL}/api/payments/subscription`,
+  verifySaaSSubscription: `${API_BASE_URL}/api/payments/subscription/verify`,
+  publishToOndc: (id: string) => `${API_BASE_URL}/api/shopkeepers/${id}/ondc/publish`,
   
   createReview: `${API_BASE_URL}/api/reviews`,
   shopReviews: (shopkeeperId: string) => `${API_BASE_URL}/api/reviews?shopkeeperId=${shopkeeperId}`,

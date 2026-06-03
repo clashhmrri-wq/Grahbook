@@ -4,6 +4,7 @@ import {
   onboardShopkeeperSchema,
   getShopkeeperAnalytics,
   getAllShopkeepers,
+  publishToOndc,
 } from '../controllers/shopkeeperController';
 import { validateRequest } from '../middleware/validate';
 
@@ -20,5 +21,9 @@ router.post('/onboard', validateRequest(onboardShopkeeperSchema), onboardShopkee
 // Get shopkeeper dashboard analytics
 // GET /api/shopkeepers/:id/analytics
 router.get('/:id/analytics', getShopkeeperAnalytics);
+
+// Publish catalog to ONDC Gateway registry
+// POST /api/shopkeepers/:id/ondc/publish
+router.post('/:id/ondc/publish', publishToOndc);
 
 export default router;

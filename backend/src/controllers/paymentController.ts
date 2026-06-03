@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import Razorpay from 'razorpay';
 import prisma from '../config/db';
 
-// Validation schema for creating a payment order
+// Validation schemas for order payments
 export const createPaymentSchema = z.object({
   body: z.object({
     orderId: z.string().uuid({ message: 'Valid order ID is required.' }),
@@ -12,7 +12,6 @@ export const createPaymentSchema = z.object({
   }),
 });
 
-// Validation schema for payment signature verification
 export const verifyPaymentSchema = z.object({
   body: z.object({
     orderId: z.string().uuid({ message: 'Valid order ID is required.' }),
@@ -22,17 +21,38 @@ export const verifyPaymentSchema = z.object({
   }),
 });
 
-// Initialize Razorpay SDK. Support mock configuration if keys are missing.
-const hasRazorpayConfig = process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET;
-const razorpay = hasRazorpayConfig
-  ? new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID || '',
-      key_secret: process.env.RAZORPAY_KEY_SECRET || '',
-    })
-  : null;
+// Validation schemas for SaaS upgrades
+export const createSaaSSubscriptionSchema = z.object({
+  body: z.object({
+    shopkeeperId: z.string().uuid({ message: 'Valid shopkeeper ID is required.' }),
+    plan: z.enum(['BASIC', 'PREMIUM']),
+  }),
+});
+
+export const verifySaaSSubscriptionSchema = z.object({
+  body: z.object({
+    shopkeeperId: z.string().uuid({ message: 'Valid shopkeeper ID is required.' }),
+    razorpaySubscriptionId: z.string().min(1, { message: 'Subscription ID is required.' }),
+    razorpayPaymentId: z.string().min(1, { message: 'Payment ID is required.' }),
+    razorpaySignature: z.string().min(1, { message: 'Signature is required.' }),
+  }),
+});
+
+// Initialize Razorpay SDK. Require keys in environment.
+const key_id = process.env.RAZORPAY_KEY_ID;
+const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+if (!key_id || !key_secret) {
+  console.warn('⚠️ WARNING: Razorpay API keys are missing in your environment configuration (.env). API checkouts will throw errors.');
+}
+
+const razorpay = new Razorpay({
+  key_id: key_id || 'dummy_key',
+  key_secret: key_secret || 'dummy_secret',
+});
 
 /**
- * Initialize payment order via Razorpay SDK (with mock fallback if keys are missing)
+ * Initialize payment order via Razorpay SDK (Real integration)
  */
 export const createPaymentOrder = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -44,31 +64,31 @@ export const createPaymentOrder = async (req: Request, res: Response): Promise<v
       return;
     }
 
-    let razorpayOrderId = `rzp_mock_${crypto.randomBytes(8).toString('hex')}`;
-
-    if (razorpay) {
-      // Create Razorpay Order
-      // Razorpay expects amount in paise (1 INR = 100 Paise)
-      const options = {
-        amount: Math.round(amount * 100),
-        currency: 'INR',
-        receipt: `receipt_order_${orderId.substring(0, 8)}`,
-      };
-
-      const razorpayOrder = await razorpay.orders.create(options);
-      razorpayOrderId = razorpayOrder.id;
+    if (!key_id || !key_secret) {
+      res.status(500).json({ success: false, message: 'Payment gateway configuration missing.' });
+      return;
     }
+
+    // Create Razorpay Order
+    // Razorpay expects amount in paise (1 INR = 100 Paise)
+    const options = {
+      amount: Math.round(amount * 100),
+      currency: 'INR',
+      receipt: `receipt_order_${orderId.substring(0, 8)}`,
+    };
+
+    const razorpayOrder = await razorpay.orders.create(options);
 
     // Insert or update payment record in PostgreSQL
     const payment = await prisma.payment.upsert({
-      where: { razorpayOrderId },
+      where: { razorpayOrderId: razorpayOrder.id },
       update: {
         amount,
         status: 'PENDING',
       },
       create: {
         orderId,
-        razorpayOrderId,
+        razorpayOrderId: razorpayOrder.id,
         amount,
         status: 'PENDING',
       },
@@ -76,10 +96,9 @@ export const createPaymentOrder = async (req: Request, res: Response): Promise<v
 
     res.status(201).json({
       success: true,
-      message: razorpay ? 'Razorpay order created successfully' : 'Mock payment order initialized',
-      isMockMode: !razorpay,
-      razorpayKeyId: process.env.RAZORPAY_KEY_ID || 'rzp_test_mock_key',
-      razorpayOrderId,
+      message: 'Razorpay order created successfully',
+      razorpayKeyId: key_id,
+      razorpayOrderId: razorpayOrder.id,
       paymentId: payment.id,
       amount,
     });
@@ -93,35 +112,30 @@ export const createPaymentOrder = async (req: Request, res: Response): Promise<v
 };
 
 /**
- * Verify Razorpay payment signature (supports mock verification if isMockMode is true)
+ * Verify Razorpay payment signature
  */
 export const verifyPayment = async (req: Request, res: Response): Promise<void> => {
   try {
     const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
 
-    // Check if the order exists
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) {
       res.status(404).json({ success: false, message: 'Order not found.' });
       return;
     }
 
-    let isSignatureValid = false;
-
-    if (razorpayOrderId.startsWith('rzp_mock_')) {
-      // Mock validation mode
-      isSignatureValid = true;
-    } else if (hasRazorpayConfig && process.env.RAZORPAY_KEY_SECRET) {
-      // Direct HMAC signature validation
-      const generatedSignature = crypto
-        .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-        .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-        .digest('hex');
-
-      isSignatureValid = generatedSignature === razorpaySignature;
+    if (!key_secret) {
+      res.status(500).json({ success: false, message: 'Payment gateway credentials missing.' });
+      return;
     }
 
-    if (!isSignatureValid) {
+    // Direct HMAC signature validation (No mock flow)
+    const generatedSignature = crypto
+      .createHmac('sha256', key_secret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest('hex');
+
+    if (generatedSignature !== razorpaySignature) {
       res.status(400).json({
         success: false,
         message: 'Payment signature verification failed. Invalid transaction.',
@@ -129,9 +143,8 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
       return;
     }
 
-    // Execute payment success updates in database transaction
+    // Execute database updates in transaction
     await prisma.$transaction(async (tx) => {
-      // 1. Update Payment status
       await tx.payment.update({
         where: { razorpayOrderId },
         data: {
@@ -140,7 +153,6 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
         },
       });
 
-      // 2. Set order status to ACCEPTED
       await tx.order.update({
         where: { id: orderId },
         data: {
@@ -158,6 +170,115 @@ export const verifyPayment = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({
       success: false,
       message: 'Failed to verify payment transaction.',
+    });
+  }
+};
+
+/**
+ * Initialize Razorpay SaaS Subscription for shopkeeper plan upgrades
+ */
+export const createSaaSSubscription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { shopkeeperId, plan } = req.body;
+
+    const shop = await prisma.shopkeeper.findUnique({ where: { id: shopkeeperId } });
+    if (!shop) {
+      res.status(404).json({ success: false, message: 'Shopkeeper not found.' });
+      return;
+    }
+
+    if (!key_id || !key_secret) {
+      res.status(500).json({ success: false, message: 'Subscription billing credentials missing.' });
+      return;
+    }
+
+    // Upgrading to PREMIUM monthly plan (₹799)
+    // In production, you would create a Plan ID via Razorpay Dashboard and link it here
+    const premiumPlanId = process.env.RAZORPAY_PREMIUM_PLAN_ID || 'plan_GBPremium001';
+
+    const options = {
+      plan_id: premiumPlanId,
+      total_count: 12, // 1 year billing cycle
+      quantity: 1,
+      customer_notify: 1 as const,
+      notes: {
+        shopkeeperId,
+        plan,
+      },
+    };
+
+    const subscription = (await razorpay.subscriptions.create(options)) as any;
+
+    res.status(201).json({
+      success: true,
+      message: 'Subscription initialized successfully.',
+      razorpayKeyId: key_id,
+      razorpaySubscriptionId: subscription.id,
+      plan,
+    });
+  } catch (error) {
+    console.error('Error creating subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initialize SaaS subscription billing.',
+    });
+  }
+};
+
+/**
+ * Verify SaaS upgrade subscription signature and unlock premium features
+ */
+export const verifySaaSSubscription = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { shopkeeperId, razorpaySubscriptionId, razorpayPaymentId, razorpaySignature } = req.body;
+
+    const shop = await prisma.shopkeeper.findUnique({ where: { id: shopkeeperId } });
+    if (!shop) {
+      res.status(404).json({ success: false, message: 'Shopkeeper not found.' });
+      return;
+    }
+
+    if (!key_secret) {
+      res.status(500).json({ success: false, message: 'Subscription verification keys missing.' });
+      return;
+    }
+
+    // Validate Signature
+    const generatedSignature = crypto
+      .createHmac('sha256', key_secret)
+      .update(`${razorpayPaymentId}|${razorpaySubscriptionId}`)
+      .digest('hex');
+
+    if (generatedSignature !== razorpaySignature) {
+      res.status(400).json({
+        success: false,
+        message: 'Signature mismatch. SaaS subscription verification failed.',
+      });
+      return;
+    }
+
+    // Upgrade shop subscription variables in PostgreSQL database
+    const nextExpires = new Date();
+    nextExpires.setDate(nextExpires.getDate() + 30); // Extend by 30 days
+
+    await prisma.shopkeeper.update({
+      where: { id: shopkeeperId },
+      data: {
+        saasPlan: 'PREMIUM',
+        saasStatus: 'ACTIVE',
+        saasExpiresAt: nextExpires,
+      },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'SaaS Subscription active! Premium features unlocked successfully.',
+    });
+  } catch (error) {
+    console.error('Error verifying SaaS subscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify SaaS subscription.',
     });
   }
 };
