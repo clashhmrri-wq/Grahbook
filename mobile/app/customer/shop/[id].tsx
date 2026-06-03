@@ -45,7 +45,7 @@ export default function ShopDetail() {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Connection Error', 'Store data load karne mein problem aayi.');
+      Alert.alert('Connection Error', 'Failed to load store data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -100,25 +100,25 @@ export default function ShopDetail() {
     const { totalPrice, itemsList } = getCartTotals();
     
     if (totalItemsCount === 0) {
-      Alert.alert('Cart Empty', 'Kripya pehle cart mein products add karein.');
+      Alert.alert('Cart Empty', 'Please add items to your cart first.');
       return;
     }
 
     if (!shop?.phoneNumber) {
-      Alert.alert('Error', 'Shopkeeper ka number nahi mila.');
+      Alert.alert('Error', 'Store contact number not found.');
       return;
     }
 
-    // Hinglish text formatting for WhatsApp-native checkout
+    // English text formatting for WhatsApp-native checkout
     const message = `*GrahakBook Order 🏪*\n` +
-      `Namaste! Main GrahakBook App se order bhejna chahta hoon:\n` +
+      `Hello! I would like to place an order via GrahakBook:\n` +
       `---------------------------------\n` +
       `${itemsList.join('\n')}\n` +
       `---------------------------------\n` +
       `*Total Amount: ₹${totalPrice.toFixed(2)}*\n\n` +
-      `*Mera Address:* [Kripya apna address enter karein]\n` +
+      `*Delivery/Pickup Address:* [Please enter your address here]\n` +
       `---------------------------------\n` +
-      `GrahakBook se seedhe order - zero customer delivery commissions!`;
+      `Direct order via GrahakBook - zero service fee commissions!`;
 
     // Format phone number (prepending country code 91 if not present)
     let formattedPhone = shop.phoneNumber;
@@ -133,12 +133,12 @@ export default function ShopDetail() {
         if (supported) {
           Linking.openURL(whatsappUrl);
         } else {
-          Alert.alert('WhatsApp Error', 'Aapke phone mein WhatsApp installed nahi hai.');
+          Alert.alert('WhatsApp Error', 'WhatsApp is not installed on your device.');
         }
       })
       .catch((err) => {
         console.error(err);
-        Alert.alert('Error', 'WhatsApp open karne mein problem aayi.');
+        Alert.alert('Error', 'Failed to open WhatsApp.');
       });
   };
 
@@ -148,7 +148,7 @@ export default function ShopDetail() {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator color={COLORS.primary} size="large" />
-        <Text style={styles.loadingText}>Dukaan ki list aur items load ho rahe hain...</Text>
+        <Text style={styles.loadingText}>Loading store catalog...</Text>
       </View>
     );
   }
@@ -156,9 +156,9 @@ export default function ShopDetail() {
   if (!shop) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Dukaan details nahi mil payin.</Text>
+        <Text style={styles.errorText}>Store details not found.</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={styles.backBtnText}>Vapas Jayein</Text>
+          <Text style={styles.backBtnText}>Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -177,10 +177,10 @@ export default function ShopDetail() {
 
         {/* Product Catalog list */}
         <View style={styles.catalogSection}>
-          <Text style={styles.sectionTitle}>Browse Items (सामान की लिस्ट)</Text>
+          <Text style={styles.sectionTitle}>Browse Items</Text>
 
           {products.length === 0 ? (
-            <Text style={styles.emptyText}>Dukaan par abhi koi stock available nahi hai.</Text>
+            <Text style={styles.emptyText}>No products available at this store.</Text>
           ) : (
             products.map((item) => {
               const qtyInCart = cart[item.id] || 0;
@@ -226,7 +226,7 @@ export default function ShopDetail() {
             <Text style={styles.checkoutPrice}>₹{totalPriceCount.toFixed(2)}</Text>
           </View>
           <TouchableOpacity style={styles.whatsappCheckoutBtn} onPress={handleWhatsAppOrder}>
-            <Text style={styles.whatsappCheckoutText}>WhatsApp Order (व्हाट्सएप भेजें) 💬</Text>
+            <Text style={styles.whatsappCheckoutText}>WhatsApp Order 💬</Text>
           </TouchableOpacity>
         </View>
       )}

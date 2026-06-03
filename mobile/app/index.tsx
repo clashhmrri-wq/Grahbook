@@ -10,12 +10,11 @@ export default function WelcomeScreen() {
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerContainer}>
         <Text style={styles.logoText}>📦 GrahakBook</Text>
-        <Text style={styles.tagline}>Aapki Apni Neighborhood Commerce Platform</Text>
-        <Text style={styles.taglineHindi}>आपकी अपनी नेबरहुड कॉमर्स प्लेटफॉर्म</Text>
+        <Text style={styles.tagline}>Your Local Neighborhood Commerce Platform</Text>
       </View>
 
       <View style={styles.cardContainer}>
-        <Text style={styles.introHeading}>Aapka Platform Par Swagat Hai! (आपका स्वागत है!)</Text>
+        <Text style={styles.introHeading}>Welcome to GrahakBook!</Text>
         <Text style={styles.introText}>
           Digitize your Kirana store. Connect directly with customers within 2-3 kms. Zero high commissions.
         </Text>
@@ -26,8 +25,8 @@ export default function WelcomeScreen() {
         >
           <Text style={styles.buttonEmoji}>🏪</Text>
           <View style={styles.buttonTextContainer}>
-            <Text style={styles.buttonTitle}>Main Shopkeeper Hoon</Text>
-            <Text style={styles.buttonSubtitle}>Dukaan Register & Manage Karein</Text>
+            <Text style={styles.buttonTitle}>I am a Shopkeeper</Text>
+            <Text style={styles.buttonSubtitle}>Register & Manage Your Store</Text>
           </View>
         </TouchableOpacity>
 
@@ -37,8 +36,8 @@ export default function WelcomeScreen() {
         >
           <Text style={styles.buttonEmoji}>🛍️</Text>
           <View style={styles.buttonTextContainer}>
-            <Text style={styles.buttonTitle}>Main Customer Hoon</Text>
-            <Text style={styles.buttonSubtitle}>Aas-paas ki Kirana se Saman Mangayein</Text>
+            <Text style={styles.buttonTitle}>I am a Customer</Text>
+            <Text style={styles.buttonSubtitle}>Browse & Order From Nearby Shops</Text>
           </View>
         </TouchableOpacity>
       </View>

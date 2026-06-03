@@ -45,9 +45,7 @@ export const onboardShopkeeper = async (req: Request, res: Response): Promise<vo
     if (existingShop) {
       res.status(400).json({
         success: false,
-        // Non-technical shopkeeper-facing response string in Hinglish (Hindi + English)
-        message: 'Mobile number pehle se registered hai. Kripya doosra number enter karein ya login karein.',
-        hinglishMessage: 'Yeh mobile number pehle se registered hai (यह मोबाइल नंबर पहले से रजिस्टर्ड है). Kripya login karein.',
+        message: 'Mobile number is already registered. Please login or use a different number.',
       });
       return;
     }
@@ -73,18 +71,11 @@ export const onboardShopkeeper = async (req: Request, res: Response): Promise<vo
       },
     });
 
-    // Success responses localized in Hindi/English
-    // Shopkeeper-facing welcome and subscription summary
-    const welcomeMessageHinglish = `Badhaai ho ${ownerName}! Aapki dukaan "${shopName}" GrahakBook par register ho gayi hai (बधाई हो! आपकी दुकान GrahakBook पर रजिस्टर हो गयी है).`;
-    const subMessageHinglish = `Aapka 30-din ka free trial shuru ho chuka hai (आपका 30 दिन का फ्री ट्रायल शुरू हो चुका है). Ye ${saasExpiresAt.toLocaleDateString('en-IN')} tak valid hai.`;
-
     res.status(201).json({
       success: true,
       message: 'Shopkeeper onboarded successfully',
-      hinglish: {
-        welcome: welcomeMessageHinglish,
-        subscriptionInfo: subMessageHinglish,
-      },
+      welcome: `Congratulations ${ownerName}! Your store "${shopName}" has been registered successfully.`,
+      subscriptionInfo: `Your 30-day free trial has started, valid until ${saasExpiresAt.toLocaleDateString('en-IN')}.`,
       data: {
         id: newShopkeeper.id,
         ownerName: newShopkeeper.ownerName,
@@ -101,8 +92,7 @@ export const onboardShopkeeper = async (req: Request, res: Response): Promise<vo
     console.error('Error in onboarding shopkeeper:', error);
     res.status(500).json({
       success: false,
-      message: 'Something went wrong during onboarding.',
-      hinglishMessage: 'Kuchh galat ho gaya, kripya thodi der baad dobara koshish karein (कुछ गलत हो गया, कृपया थोड़ी देर बाद दोबारा कोशिश करें).',
+      message: 'Something went wrong during onboarding. Please try again later.',
     });
   }
 };

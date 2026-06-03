@@ -36,11 +36,11 @@ export default function CustomerHome() {
       if (response.ok && data.success) {
         setShops(data.data);
       } else {
-        Alert.alert('Search Error', 'Aas-paas ki dukaanein load nahi ho payin.');
+        Alert.alert('Search Error', 'Unable to load nearby stores.');
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Connection Error', 'Backend server se connection fail hua. Check settings.');
+      Alert.alert('Connection Error', 'Could not connect to the backend server. Please verify settings.');
     } finally {
       setShopsLoading(false);
     }
@@ -53,7 +53,7 @@ export default function CustomerHome() {
       if (status !== 'granted') {
         Alert.alert(
           'Location Needed',
-          'Aas-paas ki kirana dukaanein dhoondhne ke liye location permission enable karein.'
+          'Please enable location permissions to find nearby stores.'
         );
         setLocationLoading(false);
         return;
@@ -73,7 +73,7 @@ export default function CustomerHome() {
       await getNearbyShops(lat, lng);
     } catch (err) {
       console.error(err);
-      Alert.alert('GPS Error', 'Locate karne mein problem aayi. GPS status check karein.');
+      Alert.alert('GPS Error', 'An error occurred while fetching your location. Please check your GPS status.');
     } finally {
       setLocationLoading(false);
     }
@@ -103,12 +103,12 @@ export default function CustomerHome() {
           </View>
         ) : (
           <View style={styles.locationPrompt}>
-            <Text style={styles.locErrorText}>Location capture nahi ho payi.</Text>
+            <Text style={styles.locErrorText}>Location could not be captured.</Text>
             <TouchableOpacity style={styles.gpsBtn} onPress={locateAndSearch} disabled={locationLoading}>
               {locationLoading ? (
                 <ActivityIndicator color={COLORS.background} />
               ) : (
-                <Text style={styles.gpsBtnText}>📍 Locate Me (लोकेशन सेट करें)</Text>
+                <Text style={styles.gpsBtnText}>📍 Locate Me</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -117,14 +117,14 @@ export default function CustomerHome() {
 
       {/* Stores List */}
       <View style={styles.storesSection}>
-        <Text style={styles.sectionHeading}>Nearby Kirana Stores (आस-पास की दुकानें)</Text>
+        <Text style={styles.sectionHeading}>Nearby Kirana Stores</Text>
 
         {shopsLoading ? (
           <ActivityIndicator color={COLORS.primary} size="large" style={{ marginTop: 40 }} />
         ) : shops.length === 0 ? (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              Aapke 3 km area mein koi GrahakBook Kirana store nahi mila.
+              No GrahakBook Kirana stores found within 3 km of your location.
             </Text>
             <Text style={styles.emptySubText}>
               (Tip: Make sure you have registered a shopkeeper with close-by coordinates).
@@ -144,7 +144,7 @@ export default function CustomerHome() {
                 <Text style={styles.shopName}>{shop.shopName}</Text>
                 <Text style={styles.shopOwner}>Owner: {shop.ownerName}</Text>
                 <Text style={styles.shopAddress} numberOfLines={1}>{shop.address}</Text>
-                <Text style={styles.distanceBadge}>{shop.distance.toFixed(2)} km door</Text>
+                <Text style={styles.distanceBadge}>{shop.distance.toFixed(2)} km away</Text>
               </View>
               <Text style={styles.arrowIcon}>➔</Text>
             </TouchableOpacity>
@@ -156,7 +156,7 @@ export default function CustomerHome() {
         style={styles.backBtn}
         onPress={() => router.replace('/')}
       >
-        <Text style={styles.backBtnText}>Vapas Jayein (वापस जाएं)</Text>
+        <Text style={styles.backBtnText}>Go Back</Text>
       </TouchableOpacity>
     </ScrollView>
   );

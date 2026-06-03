@@ -43,8 +43,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
     if (!shop) {
       res.status(404).json({
         success: false,
-        message: 'Shopkeeper not found.',
-        hinglishMessage: 'Dukaan register nahi hai. Kripya pehle registration karein (दुकान रजिस्टर नहीं है। कृपया पहले रजिस्ट्रेशन करें।).',
+        message: 'Shopkeeper not found. Please register first.',
       });
       return;
     }
@@ -64,15 +63,13 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
     res.status(201).json({
       success: true,
       message: 'Product added successfully',
-      hinglishMessage: `Saman "${name}" dukaan mein add ho gaya hai (सामान दुकान में ऐड हो गया है)!`,
       data: newProduct,
     });
   } catch (error) {
     console.error('Error adding product:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to add product.',
-      hinglishMessage: 'Saman add karne mein error aayi, kripya dobara koshish karein.',
+      message: 'Failed to add product. Please try again.',
     });
   }
 };
@@ -137,7 +134,6 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     res.status(200).json({
       success: true,
       message: 'Product updated successfully',
-      hinglishMessage: `Saman "${updatedProduct.name}" ki details update ho gayi hain (सामान की डिटेल्स अपडेट हो गयी हैं).`,
       data: updatedProduct,
     });
   } catch (error) {
@@ -175,7 +171,6 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
     res.status(200).json({
       success: true,
       message: 'Product deleted successfully',
-      hinglishMessage: 'Saman inventory se hata diya gaya hai (सामान इन्वेंटरी से हटा दिया गया है).',
     });
   } catch (error) {
     console.error('Error deleting product:', error);

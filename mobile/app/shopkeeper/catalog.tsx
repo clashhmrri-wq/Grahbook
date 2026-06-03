@@ -15,12 +15,12 @@ import { COLORS } from '../../src/constants/localization';
 import { API_ROUTES } from '../../src/config/api';
 
 const PRODUCT_CATEGORIES = [
-  'Grocery (अनाज & दालें)',
-  'Dairy & Bread (दूध & ब्रेड)',
-  'Snacks & Biscuits (नमकीन & बिस्कुट)',
-  'Beverages (कोल्ड ड्रिंक्स & जूस)',
-  'Vegetables & Fruits (सब्जियां & फल)',
-  'Personal Care (साबुन & शैम्पू)',
+  'Grocery',
+  'Dairy & Bread',
+  'Snacks & Biscuits',
+  'Beverages',
+  'Vegetables & Fruits',
+  'Personal Care',
 ];
 
 export default function ShopkeeperCatalog() {
@@ -53,11 +53,11 @@ export default function ShopkeeperCatalog() {
       if (response.ok && data.success) {
         setProducts(data.data);
       } else {
-        Alert.alert('Error', 'Saman ki list load nahi ho payi.');
+        Alert.alert('Error', 'Failed to load products list.');
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Connection Error', 'Backend se connect karne mein problem aayi.');
+      Alert.alert('Connection Error', 'Could not connect to the backend server.');
     } finally {
       setLoading(false);
     }
@@ -72,12 +72,12 @@ export default function ShopkeeperCatalog() {
   // Handle adding new product
   const handleAddProduct = async () => {
     if (!shopkeeperId) {
-      Alert.alert('ID Required', 'Kripya pehle Dukaan ID enter karein.');
+      Alert.alert('ID Required', 'Please enter a valid Shopkeeper ID.');
       return;
     }
 
     if (!name || !price || !stockQuantity) {
-      Alert.alert('Details Missing', 'Kripya item ka Naam, Keemat aur Stock zaroor fill karein.');
+      Alert.alert('Details Missing', 'Please fill in the product Name, Price, and Stock.');
       return;
     }
 
@@ -101,7 +101,7 @@ export default function ShopkeeperCatalog() {
 
       const data = await response.json();
       if (response.ok && data.success) {
-        Alert.alert('Saman Add Hua ✓', data.hinglishMessage || 'Item successfully added.');
+        Alert.alert('Success ✓', 'Product successfully added.');
         setName('');
         setDescription('');
         setPrice('');
@@ -113,7 +113,7 @@ export default function ShopkeeperCatalog() {
       }
     } catch (error) {
       console.error(error);
-      Alert.alert('Server Error', 'Saman add nahi ho paya. API online check karein.');
+      Alert.alert('Server Error', 'Failed to add product. Please try again later.');
     } finally {
       setSubmitting(false);
     }
@@ -122,11 +122,11 @@ export default function ShopkeeperCatalog() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>🏪 Catalog Manager</Text>
-      <Text style={styles.subtitle}>Apni dukaan ke items manage karein</Text>
+      <Text style={styles.subtitle}>Manage your store inventory items</Text>
 
       {/* Shopkeeper ID Settings */}
       <View style={styles.card}>
-        <Text style={styles.label}>Dukaan ID (दुकान आईडी)</Text>
+        <Text style={styles.label}>Store ID</Text>
         <TextInput
           style={styles.input}
           placeholder="Paste Shopkeeper ID here"
@@ -135,15 +135,15 @@ export default function ShopkeeperCatalog() {
           onChangeText={setShopkeeperId}
         />
         <TouchableOpacity style={styles.refreshBtn} onPress={fetchProducts}>
-          <Text style={styles.refreshBtnText}>🔄 Inventory Load Karein</Text>
+          <Text style={styles.refreshBtnText}>🔄 Load Inventory</Text>
         </TouchableOpacity>
       </View>
 
       {/* Add New Product Form */}
       <View style={styles.card}>
-        <Text style={styles.cardHeader}>Naya Saman Add Karein (नया सामान जोड़ें)</Text>
+        <Text style={styles.cardHeader}>Add New Product</Text>
 
-        <Text style={styles.label}>Saman Ka Naam (सामान का नाम) *</Text>
+        <Text style={styles.label}>Product Name *</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g., Aashirvaad Atta 5kg, Amul Butter 100g"
@@ -152,7 +152,7 @@ export default function ShopkeeperCatalog() {
           onChangeText={setName}
         />
 
-        <Text style={styles.label}>Short Details (सामान की जानकारी)</Text>
+        <Text style={styles.label}>Short Description</Text>
         <TextInput
           style={styles.input}
           placeholder="e.g., fresh stock, pack of 2"
@@ -163,7 +163,7 @@ export default function ShopkeeperCatalog() {
 
         <View style={styles.row}>
           <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={styles.label}>Keemat / Price (₹) *</Text>
+            <Text style={styles.label}>Price (₹) *</Text>
             <TextInput
               style={styles.input}
               keyboardType="numeric"
@@ -186,7 +186,7 @@ export default function ShopkeeperCatalog() {
           </View>
         </View>
 
-        <Text style={styles.label}>Category Choose Karein (कैटेगरी चुनें)</Text>
+        <Text style={styles.label}>Select Category</Text>
         <View style={styles.categoryContainer}>
           {PRODUCT_CATEGORIES.map((cat) => (
             <TouchableOpacity
@@ -201,7 +201,7 @@ export default function ShopkeeperCatalog() {
           ))}
         </View>
 
-        <Text style={styles.label}>Photo Link / Image URL (ऑप्शनल)</Text>
+        <Text style={styles.label}>Image URL (Optional)</Text>
         <TextInput
           style={styles.input}
           placeholder="https://example.com/photo.jpg"
@@ -218,19 +218,19 @@ export default function ShopkeeperCatalog() {
           {submitting ? (
             <ActivityIndicator color={COLORS.background} />
           ) : (
-            <Text style={styles.addBtnText}>🏪 Store Mein Add Karein</Text>
+            <Text style={styles.addBtnText}>🏪 Add to Store Catalog</Text>
           )}
         </TouchableOpacity>
       </View>
 
       {/* Inventory List */}
       <View style={styles.inventorySection}>
-        <Text style={styles.inventoryTitle}>Aapka Stock ({products.length} Items)</Text>
+        <Text style={styles.inventoryTitle}>Your Inventory ({products.length} Items)</Text>
 
         {loading ? (
           <ActivityIndicator color={COLORS.primary} style={{ marginTop: 20 }} />
         ) : products.length === 0 ? (
-          <Text style={styles.emptyText}>Dukaan mein koi saman nahi hai. Naya item add karein.</Text>
+          <Text style={styles.emptyText}>No products found in this store catalog. Please add items above.</Text>
         ) : (
           products.map((item) => (
             <View key={item.id} style={styles.productRow}>
@@ -253,7 +253,7 @@ export default function ShopkeeperCatalog() {
         style={styles.backBtn}
         onPress={() => router.replace('/shopkeeper/dashboard')}
       >
-        <Text style={styles.backBtnText}>Dashboard Par Vapas Jayein</Text>
+        <Text style={styles.backBtnText}>Go Back to Dashboard</Text>
       </TouchableOpacity>
     </ScrollView>
   );

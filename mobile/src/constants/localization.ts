@@ -1,50 +1,50 @@
 export const LOCALIZATION = {
-  welcomeTitle: "Apni Kirana Dukaan Register Karein",
-  welcomeTitleHindi: "अपनी किराना दुकान रजिस्टर करें",
-  welcomeSubtitle: "GrahakBook ke saath apne neighborhood grahakon se seedhe judein.",
-  welcomeSubtitleHindi: "ग्राहकबुक के साथ अपने पड़ोस के ग्राहकों से सीधे जुड़ें।",
+  welcomeTitle: "Register Your Kirana Store",
+  welcomeTitleHindi: "Register Your Kirana Store",
+  welcomeSubtitle: "Directly connect with neighborhood customers using GrahakBook.",
+  welcomeSubtitleHindi: "Directly connect with neighborhood customers using GrahakBook.",
 
-  ownerNameLabel: "Owner Ka Naam (मालिक का नाम)",
+  ownerNameLabel: "Owner Name",
   ownerNamePlaceholder: "e.g., Ramesh Kumar",
   
-  shopNameLabel: "Dukaan Ka Naam (दुकान का नाम)",
+  shopNameLabel: "Shop / Store Name",
   shopNamePlaceholder: "e.g., Ramesh Kirana Store",
 
-  phoneLabel: "WhatsApp Number (व्हाट्सएप नंबर)",
+  phoneLabel: "WhatsApp Mobile Number",
   phonePlaceholder: "e.g., 9876543210",
-  phoneHelper: "Aapke orders isi number par WhatsApp ke zariye aayenge.",
-  phoneHelperHindi: "आपके ऑर्डर्स इसी नंबर पर व्हाट्सएप के ज़रिए आएंगे।",
+  phoneHelper: "Your orders and notifications will be sent directly to this number.",
+  phoneHelperHindi: "Your orders and notifications will be sent directly to this number.",
 
-  pincodeLabel: "Area PIN Code (एरिया पिन कोड)",
+  pincodeLabel: "Area PIN Code",
   pincodePlaceholder: "e.g., 452001",
 
-  addressLabel: "Dukaan Ka Pata (दुकान का पता)",
+  addressLabel: "Physical Shop Address",
   addressPlaceholder: "e.g., Shop No. 12, Main Market",
 
-  cityLabel: "City / Shahar (शहर)",
+  cityLabel: "City",
   cityPlaceholder: "e.g., Indore, Delhi",
 
-  locationTitle: "Dukaan Ki Location (दुकान की लोकेशन)",
-  locationBtnActive: "GPS Location Mil Gayi! ✓",
-  locationBtnFetch: "GPS Location Set Karein (जीपीएस लोकेशन सेट करें)",
-  locationBtnLoading: "Location dhundh rahe hain...",
-  locationPermissionError: "Kripya settings mein jaakar location permission allow karein.",
+  locationTitle: "Store Geolocation Coordinates",
+  locationBtnActive: "GPS Location Set! ✓",
+  locationBtnFetch: "Capture GPS Location",
+  locationBtnLoading: "Fetching device coordinates...",
+  locationPermissionError: "Please enable location services permissions in your system settings.",
 
-  saasTitle: "SaaS Plan Select Karein (प्लान चुनें)",
+  saasTitle: "Select SaaS Subscription Plan",
   saasBasicTitle: "₹299/Month (Basic)",
   saasBasicDesc: "Single-store inventory, WhatsApp notifications & direct UPI payments.",
   saasPremiumTitle: "₹799/Month (Premium)",
   saasPremiumDesc: "ONDC network distribution + Razorpay subscription flow + advanced analytics.",
 
-  submitBtn: "Dukaan Onboard Karein (दुकान ऑनबोर्ड करें)",
-  submitBtnLoading: "Registration ho raha hai...",
+  submitBtn: "Onboard Kirana Store",
+  submitBtnLoading: "Processing registration details...",
 
-  successTitle: "Badhaai Ho! (बधाई हो!)",
-  successMessage: "Aapki dukaan onboard ho gayi hai. 30 din ka free trial shuru ho chuka hai.",
+  successTitle: "Congratulations!",
+  successMessage: "Your store has been successfully onboarded. Your 30-day free trial is active.",
 };
 
 export const COLORS = {
-  primary: "#10B981", // Sleek vibrant Emerald green representing trust & growth in India
+  primary: "#10B981", // Sleek vibrant Emerald green representing trust & growth
   primaryDark: "#059669",
   background: "#121214", // Deep rich dark mode background
   cardBackground: "#1E1E24", // Premium elevated card surface

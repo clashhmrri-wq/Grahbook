@@ -55,10 +55,10 @@ export default function ShopkeeperOnboard() {
 
       setLatitude(currentLocation.coords.latitude);
       setLongitude(currentLocation.coords.longitude);
-      Alert.alert('GPS Success ✓', 'Aapki dukaan ki coordinates capture ho gayi hain (Dukaan coordinates captured).');
+      Alert.alert('GPS Success ✓', 'Store coordinates captured successfully.');
     } catch (err) {
       console.error(err);
-      Alert.alert('Location Error', 'GPS coordinate fetch karne mein dikkat aayi. Kripya GPS enable karein.');
+      Alert.alert('Location Error', 'Unable to fetch GPS coordinates. Please make sure location services are turned on.');
     } finally {
       setLocationLoading(false);
     }
@@ -68,12 +68,12 @@ export default function ShopkeeperOnboard() {
   const handleOnboard = async () => {
     // Front-end validations
     if (!ownerName || !shopName || !phoneNumber || !pinCode || !address || !city) {
-      Alert.alert('Details Missing', 'Kripya sabhi fields enter karein (कृपया सभी फ़ील्ड भरें).');
+      Alert.alert('Details Missing', 'Please fill in all the details.');
       return;
     }
 
     if (!latitude || !longitude) {
-      Alert.alert('Location Missing', 'Kripya GPS location set karein taaki neighborhood customers aapko dhoondh sakein.');
+      Alert.alert('Location Missing', 'Please capture your GPS location so neighbors can find your store.');
       return;
     }
 
@@ -109,14 +109,14 @@ export default function ShopkeeperOnboard() {
         // Handle validation/duplication error from express
         Alert.alert(
           'Onboarding Failure',
-          data.hinglishMessage || data.message || 'Sahi details fill karein.'
+          data.message || 'Please fill in all the details correctly.'
         );
       }
     } catch (error) {
       console.error(error);
       Alert.alert(
         'Server Error',
-        'Backend se connect nahi ho paya. Kripya check karein ki server chal raha hai.'
+        'Could not connect to the backend server. Please verify if it is running.'
       );
     } finally {
       setSubmitting(false);
@@ -128,11 +128,11 @@ export default function ShopkeeperOnboard() {
       <View style={styles.successContainer}>
         <Text style={styles.successEmoji}>🎉</Text>
         <Text style={styles.successTitle}>{LOCALIZATION.successTitle}</Text>
-        <Text style={styles.successText}>{successData.hinglish.welcome}</Text>
-        <Text style={styles.successSubText}>{successData.hinglish.subscriptionInfo}</Text>
+        <Text style={styles.successText}>{successData.welcome}</Text>
+        <Text style={styles.successSubText}>{successData.subscriptionInfo}</Text>
 
         <View style={styles.receiptContainer}>
-          <Text style={styles.receiptLabel}>Dukaan ID:</Text>
+          <Text style={styles.receiptLabel}>Store ID:</Text>
           <Text style={styles.receiptValue}>{successData.data.id}</Text>
 
           <Text style={styles.receiptLabel}>Plan Type:</Text>
@@ -143,7 +143,7 @@ export default function ShopkeeperOnboard() {
           style={styles.dashboardBtn}
           onPress={() => router.push('/shopkeeper/dashboard')}
         >
-          <Text style={styles.dashboardBtnText}>Go to Dashboard (डैशबोर्ड पर जाएं)</Text>
+          <Text style={styles.dashboardBtnText}>Go to Dashboard</Text>
         </TouchableOpacity>
       </View>
     );

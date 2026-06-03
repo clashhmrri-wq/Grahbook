@@ -36,8 +36,7 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Unhandled Server Error:', err.stack);
   res.status(500).json({
     success: false,
-    message: 'Internal server error occurred.',
-    hinglishMessage: 'Kuchh technical problem aayi hai, kripya baad mein dobara koshish karein (कुछ टेक्निकल प्रॉब्लम आयी है, कृपया बाद में दोबारा कोशिश करें).'
+    message: 'Internal server error occurred.'
   });
 });
 

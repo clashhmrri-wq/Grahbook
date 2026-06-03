@@ -9,26 +9,26 @@ export default function ShopkeeperDashboard() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🏪 Dukaan Dashboard</Text>
+        <Text style={styles.title}>🏪 Store Dashboard</Text>
         <Text style={styles.subtitle}>Manage your orders, catalog and ONDC status.</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>ONDC Network status</Text>
+        <Text style={styles.cardTitle}>ONDC Network Status</Text>
         <Text style={styles.cardStatusText}>Status: Offline (Pending Catalogs)</Text>
         <Text style={styles.hintText}>
-          Prathamiq catalog banayein taaki ONDC gateway par register ho sakein.
+          Create your first product catalog to publish your store on the ONDC network.
         </Text>
       </View>
 
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
           <Text style={styles.statVal}>0</Text>
-          <Text style={styles.statLbl}>Aaj ke Orders</Text>
+          <Text style={styles.statLbl}>Today's Orders</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statVal}>₹0.00</Text>
-          <Text style={styles.statLbl}>Aaj ki Kamai</Text>
+          <Text style={styles.statLbl}>Today's Earnings</Text>
         </View>
       </View>
 
@@ -36,14 +36,14 @@ export default function ShopkeeperDashboard() {
         style={styles.catalogBtn}
         onPress={() => router.push('/shopkeeper/catalog')}
       >
-        <Text style={styles.catalogBtnText}>📚 Manage Catalog (सामान लिस्ट देखें)</Text>
+        <Text style={styles.catalogBtnText}>📚 Manage Catalog</Text>
       </TouchableOpacity>
 
       <TouchableOpacity 
         style={styles.backBtn}
         onPress={() => router.replace('/')}
       >
-        <Text style={styles.backBtnText}>Log Out (लॉग आउट)</Text>
+        <Text style={styles.backBtnText}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );

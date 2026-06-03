@@ -80,7 +80,6 @@ export const getNearbyShops = async (req: Request, res: Response): Promise<void>
     res.status(500).json({
       success: false,
       message: 'Failed to search nearby shops.',
-      hinglishMessage: 'Shops search karne mein technical problem aayi.',
     });
   }
 };
